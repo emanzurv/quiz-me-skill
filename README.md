@@ -1,20 +1,37 @@
-# quiz-me
+<div align="center">
 
-**Your AI won't touch the code until you can explain the bug.**
+# 🧠 quiz-me
 
-Claude reads your codebase, finds the actual root cause — and then makes *you* prove you
-understand it before a single line changes. Multiple choice. Graded. It can fail you.
+### The bouncer for your diff.
 
-Think of it as a bouncer for your diff.
+![version](https://img.shields.io/badge/version-0.2.0-black)
+![claude code](https://img.shields.io/badge/Claude%20Code-plugin-orange)
+![license](https://img.shields.io/badge/license-MIT-blue)
+![vibe coding](https://img.shields.io/badge/vibe%20coding-denied-red)
+
+</div>
+
+```
+you     ›  just fix the import bug
+claude  ›  sure. first: why does it report 500 imported
+           when only 30 rows actually land?
+you     ›  ...uhh
+claude  ›  (waiting)
+```
+
+That's it. That's the plugin.
+
+Claude does the reading, the searching, the typing. You do the one thing that can't be
+outsourced: **knowing why.** Nothing gets written until you prove it.
 
 ---
 
-## Try it yourself
+## 🎯 Sixty seconds. You're the one being tested.
 
-Here's a real one. A user reports: *"the import says 500 users imported, 0 failed — but only
-about 30 are actually in the database."*
+Real bug. Your users are reporting: *"the import says 500 users imported, 0 failed — but
+only about 30 are in the database."*
 
-Claude goes looking and finds this:
+Claude goes digging and comes back with this:
 
 ```js
 async function importUsers(rows) {
@@ -32,168 +49,170 @@ async function importUsers(rows) {
 }
 ```
 
-Instead of handing you a diff, it hands you this:
+And then, instead of a diff, it hands you this:
 
 ```
-Why does it report 500 imported when only ~30 rows land?
-
-  1. insertUser is throwing and the catch swallows the error
-  2. The connection pool is exhausted, so later inserts queue up
-     and die when the process exits
-  3. forEach ignores the promise the async callback returns, so the
-     function returns before any insert has finished
-  4. failed.push races between concurrent callbacks and loses entries
+┌─ Question 1 of 3 ─────────────────────────────────────────────┐
+│                                                               │
+│  Why does it report 500 imported when only ~30 rows land?     │
+│                                                               │
+│   1  insertUser is throwing and the catch swallows it         │
+│   2  The pool is exhausted, so late inserts die on exit       │
+│   3  forEach ignores the promise the async callback returns,  │
+│      so the function returns before any insert finishes       │
+│   4  failed.push races between callbacks and loses entries    │
+│                                                               │
+└───────────────────────────────────────────────────────────────┘
 ```
 
-Pick one before you scroll. Seriously — this is the whole product.
+**Lock in an answer before you scroll.** No peeking. This is the entire product and you're
+currently inside the demo.
 
-<br>
+<br><br>
 
-**It's 3.**
+### 👉 It's 3.
 
-If you went with 1, that's the good trap, and here's how Claude talks you out of it: if
-inserts were throwing, `failed` would be filling up. But the count came back as *exactly*
-`rows.length` — so `failed` was still empty when the function returned. The callbacks hadn't
-even run. `forEach` doesn't wait for the promise, `importUsers` resolves immediately, and
-the pending inserts die with the process.
+Went with 1? Good — that's the trap, and it's a smart wrong answer. Here's how Claude walks
+you off it:
 
-Miss it and Claude explains that, then asks again from a new angle until it lands. Get all
-three questions right and *now* it writes the fix.
+> If inserts were throwing, `failed` would be **filling up**. But the count came back as
+> *exactly* `rows.length` — so `failed` was still empty when the function returned. The
+> callbacks hadn't even run yet. `forEach` throws the promise on the floor, `importUsers`
+> resolves immediately, and 470 pending inserts die with the process.
 
-Then it hands you the receipt:
+Miss it and you don't just get corrected — you get asked again, reworded, from a new angle,
+until it actually clicks. Nail all three questions and *now* the code lands.
+
+Then comes the receipt:
 
 ```
-importUsers.js:4  — for...of instead of forEach so each insert is actually awaited
-importUsers.js:12 — return the failed rows, not just a count, so callers can retry
-db.js:22          — insertUser now takes a client so the batch shares one transaction
+✅  importUsers.js:4   for...of instead of forEach, so each insert is awaited
+✅  importUsers.js:12  return the failed rows, not just a count, so callers retry
+⚠️   db.js:22          insertUser takes a client, so the batch shares a transaction
 
 2/3 understood — gap on the shared transaction
 ```
 
-Every edit named. Nothing waved off as "minor." And no, you don't get credit for the one you
-couldn't explain.
+Every edit named. Nothing bundled, nothing shrugged off as "minor," and **no credit for the
+one you couldn't explain.** Then it fills that gap in.
 
 ---
 
-## Install
+## ⚡ Install
 
 ```
 /plugin marketplace add schwann2402/quiz-me-skill
 /plugin install quiz-me@quiz-me
 ```
 
-If the install summary says `Run /reload-plugins to activate.` — run that.
+Told to `Run /reload-plugins to activate.`? Run it.
 
-**Did it work?** Type `/quiz-me:` and you should see `quiz-me` and `review`. If not, check
-`/plugin`.
+**Did it land?** Type `/quiz-me:` — you should see `quiz-me` and `review`. Nothing there?
+Check `/plugin`.
 
-It's now on your machine for every project — and it stays completely quiet until you pick a
-level below.
+It's on your machine for every project now, and it will sit there in total silence until you
+pick a level. 👇
 
-## Pick your level
+## 🎚️ Pick your level
 
-### Level 1 — When you ask for it
+| | What happens | Cost to set up |
+| :-- | :-- | :-- |
+| **1 · On request** | Quizzes you when you ask | nothing |
+| **2 · One repo** | Quizzes you on every real change in that repo | one line |
+| **3 · Everywhere** | Same, in every project you open | one line |
+| **🔒 Hard mode** | Claude *physically cannot* edit until you pass | one small file |
 
-```
-/quiz-me:quiz-me
-```
+**Level 1** — say `/quiz-me:quiz-me`, or just *"quiz me on this first"*. Done.
 
-Or just say *"quiz me on this first"*. Nothing to configure. Good place to start.
-
-### Level 2 — Always, in one repo
-
-One line in that project's `CLAUDE.md`:
+**Level 2** — drop this into that project's `CLAUDE.md`:
 
 ```markdown
 Before implementing any non-trivial change, use the quiz-me skill.
 ```
 
-That repo is now gated. Every other repo carries on as normal. Ideal for the codebase that
-keeps biting you at 2am.
+Perfect for the one codebase that keeps ambushing you at 2am. Every other repo carries on
+blissfully ungated.
 
-### Level 3 — Always, everywhere
+**Level 3** — same line, but in `~/.claude/CLAUDE.md`. No repo escapes.
 
-Same line, but in `~/.claude/CLAUDE.md`. Every project, every session, no exceptions.
+Fair warning: levels 2 and 3 are *instructions*, and instructions get forgotten halfway
+through a long session. Which brings us to…
 
-*Caveat:* levels 2 and 3 are instructions, and instructions can be forgotten mid-session.
-If you want a rule that can't be talked out of, keep reading.
+## 🔒 Hard mode
 
-## Hard mode
+Levels 1–3 are a New Year's resolution. Hard mode is a lock on the fridge.
 
-Levels 1–3 are a promise. This is a lock. 🔒
-
-A hook denies Claude's file-editing tools outright until you've passed — and re-locks itself
-at the start of every session. Off by default (nobody wants a pop quiz to rename a
-variable). Switch it on for one repo with `.claude/quiz-me.json`, or for all of them with
+A hook flat-out denies Claude's editing tools until you've passed, and slams shut again at
+the start of every session. Off by default — nobody wants a pop quiz to rename a variable.
+Arm it for one repo via `.claude/quiz-me.json`, or for all of them via
 `~/.claude/quiz-me.json`:
 
 ```json
 { "enforce": true, "ttlMinutes": 240 }
 ```
 
-- A project file beats the global one — set `"enforce": false` in any repo you want exempt.
-- `ttlMinutes` is how long one pass keeps the door open. `0` means forever.
-- Your repos stay clean. The pass marker lives in `~/.claude/quiz-me/`.
+- A project file beats the global one — `{ "enforce": false }` exempts any repo.
+- `ttlMinutes` = how long one pass keeps the door open. `0` = forever.
+- Your repos stay spotless; the pass marker lives in `~/.claude/quiz-me/`.
 
-## The surprise exam
+## 🧊 The surprise exam
 
-Passing a quiz thirty seconds after Claude explained everything? Easy. Next week is the real
-test.
+Passing a quiz thirty seconds after Claude explained everything? That's not memory, that's
+short-term rental.
 
 ```
 /quiz-me:review 5
 ```
 
-Grabs your last 5 commits and quizzes you cold — no diff, no commit message, just the code
-as it stands today.
+Grabs your last 5 commits and quizzes you **cold**. No diff. No commit message. Just the
+code, as it lives today.
 
 ```
 3/5 retained — lost the retry backoff, fuzzy on the cache key
 ```
 
-Humbling. That's the point.
+Humbling. Extremely the point.
 
-## It knows when to shut up
+## 😴 It's not a jerk about it
 
-No quiz for lookups, formatting, renames, typos, or anything where you already called the
-bug and the fix yourself. Rule of thumb: **if Claude had to read more than one file, you get
-quizzed.**
+Zero quizzes for lookups, formatting, renames, typos, or anything where you already called
+the bug *and* the fix yourself. The rule is mechanical: **if Claude had to read more than one
+file, you get quizzed.** Otherwise it just does the work.
 
-And when it's 2am and prod is down, say **"quiz override"**. It ships, no argument, no
-reason required. It just notes once that the change went out unverified. A gate you can't
-bypass is a gate you'd uninstall.
+And when it's 2am and prod is a crater, say **"quiz override."** It ships. No argument, no
+justification, no lecture — just one quiet note that the change went out unverified.
 
-## Kill switch
+A gate you can't bypass is a gate you uninstall. 🚪
 
-- **This one change:** "quiz override"
-- **This repo:** delete the line from its `CLAUDE.md`; set `{ "enforce": false }` if you
-  turned on hard mode
-- **All of it:** `/plugin uninstall quiz-me@quiz-me`, then remove `~/.claude/quiz-me.json`
-  and `~/.claude/quiz-me/`
+## 🧯 Kill switch
 
-## When something's off
+- **Just this change** → "quiz override"
+- **This repo** → delete the line from its `CLAUDE.md`; set `{ "enforce": false }` if hard
+  mode is on
+- **Burn it all down** → `/plugin uninstall quiz-me@quiz-me`, then delete
+  `~/.claude/quiz-me.json` and `~/.claude/quiz-me/`
 
-**It didn't quiz me.** Probably landed in the skip list above. Say "quiz me on this first"
-to force it.
+No hard feelings.
 
-**It quizzed me on something trivial.** "quiz override" and move on.
+## 🩺 Something's off
 
-**Hard mode isn't blocking anything.** Run `python3 --version` — the hook is a Python script
-and it fails *open* by design, so no python3 means no lock. Then confirm `enforce` is `true`
-in `.claude/quiz-me.json` or `~/.claude/quiz-me.json`.
+| Symptom | What's happening |
+| :-- | :-- |
+| It didn't quiz me | Change hit the skip list. Say *"quiz me on this first"* to force it. |
+| It quizzed me on something dumb | *"quiz override."* Moving on. |
+| Hard mode isn't blocking | Run `python3 --version`. The hook is Python and fails **open** on purpose — no python3, no lock. Then check `enforce` is `true`. |
+| It edited before quizzing me | Say *"hold — revert that."* It restores the file and goes back to the quiz. Hard mode makes this impossible. |
 
-**It edited before quizzing me.** Say "hold — revert that" and it puts the file back and
-returns to the quiz. Hard mode exists so this can't happen.
+**Requirements:** Claude Code. Plus `python3` on your PATH for hard mode. That's the whole
+list.
 
-**Requirements:** Claude Code, plus `python3` on your PATH for hard mode. That's it.
+## 🤔 Why bother
 
-## Why bother
+Autocomplete-driven development is *gloriously* fast — right up until 2am, when something
+explodes inside code you have genuinely never read. Congratulations: you're now debugging a
+stranger's work.
 
-Autocomplete-driven development is gloriously fast right up until something explodes in code
-you've never actually read. Then you're debugging a stranger's work — and the stranger was
-you, last Tuesday.
-
-This splits the job properly:
+The stranger was you. Last Tuesday. 👻
 
 | Claude does | You do |
 | :--- | :--- |
@@ -201,9 +220,16 @@ This splits the job properly:
 | The searching | The **deciding** |
 | The typing | The **knowing why** |
 
-Every other "I reviewed this" checkbox is a lie you tell yourself. This one can actually
-fail.
+Every "✔️ I reviewed this" checkbox is a lie you tell yourself at speed.
 
-## License
+**This one can actually fail you.** That's what makes it worth something.
 
-MIT.
+<div align="center">
+
+⭐ **Star it** if you'd rather understand your codebase than inherit it.
+
+</div>
+
+## 📄 License
+
+MIT — go wild.
