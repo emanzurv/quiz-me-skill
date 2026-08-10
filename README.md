@@ -8,6 +8,7 @@
 ![claude code](https://img.shields.io/badge/Claude%20Code-plugin-orange)
 ![license](https://img.shields.io/badge/license-MIT-blue)
 ![vibe coding](https://img.shields.io/badge/vibe%20coding-denied-red)
+[![Ko-fi](https://img.shields.io/badge/Ko--fi-buy_me_a_coffee-ff5e5b?logo=kofi&logoColor=white)](https://ko-fi.com/schwann2402)
 
 </div>
 
