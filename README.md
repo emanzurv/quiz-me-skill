@@ -9,7 +9,7 @@ code it just read. Get one wrong? It explains why, then asks again. 🔁
 No more merging diffs you'd fail to defend in code review. 🛡️
 
 ```
-/plugin marketplace add schwann-2402/quiz-me-skill
+/plugin marketplace add schwann2402/quiz-me-skill
 /plugin install quiz-me@quiz-me
 ```
 
@@ -24,14 +24,14 @@ No more merging diffs you'd fail to defend in code review. 🛡️
 Claude goes and reads the code. Then, instead of a diff, you get… **this**: 👇
 
 ```
-┌─ 🧠 Question 1 of 3 ──────────────────────────────────────────┐
+┌─ 🧠 Question 1 of 3 ───────────────────────────────────────────┐
 │ Why does the counter freeze at 1?                              │
 │                                                                │
 │   1. setState is async, so the rapid updates get batched away  │
-│   2. The interval callback closed over count from the first     │
+│   2. The interval callback closed over count from the first    │
 │      render and keeps computing 0 + 1 forever                  │
-│   3. The effect re-runs every render, restarting the interval   │
-│   4. StrictMode double-mounts and cancels the second update     │
+│   3. The effect re-runs every render, restarting the interval  │
+│   4. StrictMode double-mounts and cancels the second update    │
 └────────────────────────────────────────────────────────────────┘
 ```
 
