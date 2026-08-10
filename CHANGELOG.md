@@ -2,10 +2,11 @@
 
 ## 0.2.0
 
-- Enforcement hook: `PreToolUse` denies `Edit`/`Write`/`NotebookEdit` until
-  `.claude/quiz-me.pass` exists; `SessionStart` clears the marker so each session starts
-  locked. Off by default, armed per project via `.claude/quiz-me.json` or
-  `QUIZ_ME_ENFORCE=1`. Fails open on error.
+- Enforcement hook: `PreToolUse` denies `Edit`/`Write`/`NotebookEdit` until a pass marker
+  exists for the current directory; `SessionStart` clears it so each session starts locked.
+  Off by default, armed via `.claude/quiz-me.json` (one project), `~/.claude/quiz-me.json`
+  (all projects), or `QUIZ_ME_ENFORCE=1`. Project config wins. Marker defaults to
+  `~/.claude/quiz-me/`, so nothing lands in the working tree. Fails open on error.
 - Answer key is fallible: a user answer backed by a mechanism sends Claude back to the
   code before grading.
 - Feature and refactor question ladders, so work without a root cause still gets gated.

@@ -70,8 +70,11 @@ answered correctly before the first edit.
 On a full pass, unlock the enforcement gate before editing:
 
 ```bash
-mkdir -p .claude && echo pass > .claude/quiz-me.pass
+mkdir -p ~/.claude/quiz-me && echo pass > ~/.claude/quiz-me/"${PWD//\//_}".pass
 ```
+
+The marker lives outside the repo, so nothing lands in the user's working tree. A
+project-local `.claude/quiz-me.pass` also unlocks, for repos that prefer it.
 
 If the user says "hold", "wait", or "you can't change it yet" and an edit has already
 landed, revert that edit to its exact original text and go back to quizzing.
@@ -81,7 +84,7 @@ for multiple choice. If the user explicitly says to override — "quiz override"
 it, I'll learn it later" — honor it. Do not argue, and do not require a reason.
 
 ```bash
-mkdir -p .claude && echo "override: <reason or 'none given'>" > .claude/quiz-me.pass
+mkdir -p ~/.claude/quiz-me && echo "override: <reason or 'none given'>" > ~/.claude/quiz-me/"${PWD//\//_}".pass
 ```
 
 Then say plainly, once, that the change is shipping unverified, and log it to
@@ -106,7 +109,7 @@ After the change, verify the user can explain what shipped:
 - Re-lock the gate for the next change:
 
 ```bash
-rm -f .claude/quiz-me.pass
+rm -f ~/.claude/quiz-me/"${PWD//\//_}".pass .claude/quiz-me.pass
 ```
 
 Never credit understanding the user did not demonstrate.
@@ -128,21 +131,21 @@ change that is actually happening.
 ## Enforcement
 
 Prose alone does not stop an edit. The plugin ships a `PreToolUse` hook that denies
-`Edit`, `Write`, and `NotebookEdit` until `.claude/quiz-me.pass` exists in the project.
+`Edit`, `Write`, and `NotebookEdit` until a pass marker exists for the current directory.
 A `SessionStart` hook deletes that marker, so every session starts locked.
 
 Enforcement is **off by default** — it would otherwise block one-line typo fixes. Arm it
-per project:
+for one project with `.claude/quiz-me.json`, or for every project with
+`~/.claude/quiz-me.json`:
 
 ```json
-// .claude/quiz-me.json
 { "enforce": true, "ttlMinutes": 240 }
 ```
 
-Or per shell: `export QUIZ_ME_ENFORCE=1`.
+Project config wins over global. `QUIZ_ME_ENFORCE=1` in the environment also arms it.
 
 `ttlMinutes` expires the marker so a forgotten pass does not unlock a whole day; `0`
-disables expiry. Add `.claude/quiz-me.pass` to `.gitignore`.
+disables expiry.
 
 Known limit: the hook covers file-editing tools, not shell commands. A `sed -i` still
 goes through. That is deliberate — the marker itself has to be writable, and the gate
