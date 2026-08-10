@@ -1,5 +1,18 @@
 # Changelog
 
+## 0.3.0
+
+- Quiz questions now fill every field the picker offers: `header` as a progress chip
+  (`Q2/3 mech`), `description` as one grounded line per option, and `preview` showing the
+  real code each option blames — side by side with the option list.
+- Preview rules to stop the panel leaking the answer: all-or-none, equal line counts, real
+  lines only.
+- Round banner, 12-cell progress bar, and a scorecard after every round; receipt after
+  implementation carries the same bar plus the gate state.
+- Hook denial now reads as part of the product: `🔒 quiz-me · gate closed — 3 questions to
+  unlock`.
+- `/quiz-me:review` uses the same chrome and previews.
+
 ## 0.2.0
 
 - Enforcement hook: `PreToolUse` denies `Edit`/`Write`/`NotebookEdit` until a pass marker

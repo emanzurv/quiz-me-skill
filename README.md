@@ -4,7 +4,7 @@
 
 ### The bouncer for your diff.
 
-![version](https://img.shields.io/badge/version-0.2.0-black)
+![version](https://img.shields.io/badge/version-0.3.0-black)
 ![claude code](https://img.shields.io/badge/Claude%20Code-plugin-orange)
 ![license](https://img.shields.io/badge/license-MIT-blue)
 ![vibe coding](https://img.shields.io/badge/vibe%20coding-denied-red)
@@ -52,17 +52,19 @@ async function importUsers(rows) {
 And then, instead of a diff, it hands you this:
 
 ```
-┌─ Question 1 of 3 ─────────────────────────────────────────────┐
-│                                                               │
-│  Why does it report 500 imported when only ~30 rows land?     │
-│                                                               │
-│   1  insertUser is throwing and the catch swallows it         │
-│   2  The pool is exhausted, so late inserts die on exit       │
-│   3  forEach ignores the promise the async callback returns,  │
-│      so the function returns before any insert finishes       │
-│   4  failed.push races between callbacks and loses entries    │
-│                                                               │
-└───────────────────────────────────────────────────────────────┘
+━━━ 🧠 QUIZ ME · round 1 · root cause ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  Why does it report 500 imported when only ~30 rows land?
+
+  ┌─ Q1/3 cause ────────────────────┬─ importUsers.js:7 ──────────────┐
+  │                                 │                                 │
+  │  ○ catch swallows the error     │      } catch (err) {            │
+  │  ● forEach drops the promise    │        failed.push(row);        │
+  │  ○ pool dies on process exit    │      }                          │
+  │  ○ push races between callbacks │    });                          │
+  │                                 │                                 │
+  └─────────────────────────────────┴─────────────────────────────────┘
+     ↑↓ to move — the panel shows the code that answer blames
 ```
 
 **Answer before you scroll.** No peeking. You're inside the demo — this is exactly how it
@@ -86,11 +88,14 @@ from a new angle — until it sticks. Get all three right and *then* the code la
 Then the receipt arrives:
 
 ```
-✅  importUsers.js:4   for...of instead of forEach, so each insert is awaited
-✅  importUsers.js:12  return the failed rows, not just a count, so callers retry
-⚠️   db.js:22          insertUser takes a client, so the batch shares a transaction
+━━━ 🧠 RECEIPT ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-2/3 understood — gap on the shared transaction
+  ✅  importUsers.js:4   for...of instead of forEach, so each insert is awaited
+  ✅  importUsers.js:12  return the failed rows, not just a count, so callers retry
+  ⚠️   db.js:22          insertUser takes a client, so the batch shares a transaction
+
+  ▓▓▓▓▓▓▓▓░░░░  2/3 understood — partial on the shared transaction
+  🔒 gate re-locked
 ```
 
 Every edit named. Nothing bundled, nothing quietly filed under "minor," and **no credit for

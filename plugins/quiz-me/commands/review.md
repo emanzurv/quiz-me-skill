@@ -13,11 +13,31 @@ proves recall at peak context; this proves retention.
 3. Read the *current* state of the code around each hunk, not just the diff. The
    question is about how the code works today.
 4. Quiz with `AskUserQuestion`, one question per hunk, cold — do not restate what the
-   commit message said, and do not show the diff before asking.
+   commit message said, and do not show the diff before asking. Open with a rule line:
+
+   ```
+   ━━━ 🧠 COLD REVIEW · 5 commits · 4 questions ━━━━━━━━━━━━
+   ```
+
+   Fill every field: `header` as `Q2/4 cache`-style progress chips, `description` as one
+   grounded line per option, and `preview` showing the code each option points at — same
+   line count for every option, real lines only, all-or-none.
 5. Grade each answer out loud: **retained** / **fuzzy** / **lost**. For anything not
    retained, explain the mechanism and append a line to `.claude/quiz-me-misses.md`:
    `YYYY-MM-DD — <concept> — <what was missed>`
-6. Close with a tally, e.g. `3/5 retained — lost the retry backoff, fuzzy on the cache key`.
+6. Close with the scorecard:
+
+   ```
+   ━━━ 🧠 COLD REVIEW ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+     ▓▓▓▓▓▓▓░░░░░  3/5 retained
+
+     ✅ retry queue    dead letters after 3 attempts
+     ✅ auth guard     refresh token rotates on every use
+     ⚠️  cache key      knew it was scoped, fuzzy on by what
+     ❌ retry backoff  thought it was linear; it is exponential
+     ✅ pagination     cursor, not offset, so deletes cannot skip rows
+   ```
 
 Never credit retention the user did not demonstrate. This command grades only; it does
 not edit code.

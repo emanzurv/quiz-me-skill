@@ -24,9 +24,11 @@ UNLOCK_CMD = (
 )
 
 DENY_REASON = (
-    "quiz-me gate is closed. The user has not passed the comprehension quiz for "
-    "this change yet. Do not edit. Investigate, then quiz with AskUserQuestion "
-    "(root cause / mechanism / fix). After a 100% pass, run:\n"
+    "🔒 quiz-me · gate closed — 3 questions to unlock.\n"
+    "The user has not passed the comprehension quiz for this change yet. Do not "
+    "edit. Investigate, then quiz with AskUserQuestion (root cause / mechanism / "
+    "blast radius), filling in header, description, and preview on every option. "
+    "After a 100% pass, run:\n"
     "  " + UNLOCK_CMD + "\n"
     "then edit. If the user explicitly said to override, write "
     "`override: <their reason>` to that path instead of `pass`, and say plainly "

@@ -47,6 +47,46 @@ misconceptions that are genuinely tempting in *this* code — the neighboring fu
 that looks responsible, the plausible-but-wrong ordering, the fix that treats the
 symptom. Vary which position holds the correct answer.
 
+#### Fill in every field the picker gives you
+
+A bare question with four bare options wastes most of the UI. Every question sends:
+
+- **`header`** — a progress chip, 12 characters max. Use `Q1/3 cause`, `Q2/3 mech`,
+  `Q3/3 blast` for bugs; `Q1/3 limit`, `Q2/3 trade`, `Q3/3 break` for features;
+  `Q1/3 invar`, `Q2/3 proof`, `Q3/3 reach` for refactors. The user should always know
+  how many are left.
+- **`label`** — the claim itself, 1-5 words. No leading numbers; the picker numbers them.
+- **`description`** — one line of grounded detail that makes the option tempting. Keep
+  every description within a few words of the same length.
+- **`preview`** — the code that option blames, as it actually appears in the repo.
+
+#### Previews are the whole trick
+
+`preview` renders a monospace panel beside the option list, so arrowing through answers
+walks the user through the suspect code. Give every option a preview of the lines its
+claim depends on: `file.js:7` plus three or four lines of real code, copied exactly.
+
+Rules that keep it a quiz instead of a giveaway:
+
+- **All or none.** If one option has a preview, every option has one. A lone panel is a
+  flashing arrow at the answer.
+- **Equal weight.** Same line count across options, within one line. Same style of
+  excerpt. The longest panel must not be the correct one more often than chance.
+- **Real lines only.** Never synthesize code for a distractor. If an option blames code
+  that does not exist, that option is not tempting, it is filler — cut it.
+- Previews only work on single-select questions. Quiz questions are always single-select.
+
+#### Chrome
+
+Open each round with a rule line, so the quiz reads as a thing that started and will end:
+
+```
+━━━ 🧠 QUIZ ME · round 1 · root cause ━━━━━━━━━━━━━━━━━━━━
+```
+
+Use a plain rule, not a full box — a box whose width does not match the terminal looks
+broken, and the user's terminal width is unknown.
+
 ### 3. Grade every answer out loud
 
 - **Correct** → confirm briefly, move on.
@@ -55,6 +95,28 @@ symptom. Vary which position holds the correct answer.
   that probes the same concept from a different angle. Repeat until correct.
   Append one line to `.claude/quiz-me-misses.md` (create it if absent):
   `YYYY-MM-DD — <concept> — <what was missed>`
+
+Close each round with a scorecard — a 12-cell bar, one line per question, then the state
+of play:
+
+```
+━━━ 🧠 SCORE ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  ▓▓▓▓▓▓▓▓░░░░  2/3
+
+  ✅ cause      forEach drops the promise the callback returns
+  ✅ mech       the count is computed before any insert has run
+  ❌ blast      missed that callers now need the failed rows back
+
+  one to go — re-asking the blast radius from a different angle
+```
+
+Fill cells in proportion to correct answers, `▓` filled and `░` empty. On a clean sweep,
+say so and open the gate:
+
+```
+  ▓▓▓▓▓▓▓▓▓▓▓▓  3/3 — 🔓 gate open, writing the fix
+```
 
 **The answer key can be wrong.** The key comes from Claude's investigation, and that
 investigation can be wrong. If the user picks a different option *and* supplies a
@@ -105,7 +167,24 @@ After the change, verify the user can explain what shipped:
 - Give an explicit per-item verdict: **understood** / **partial** / **gap**. Name the
   ones the user got wrong or could not explain, and fill those in. Log gaps to
   `.claude/quiz-me-misses.md`.
-- Close with a tally: `4/5 understood — gap on the serializer change`.
+- Close with the receipt — verdict column, `file:line`, then what the edit does:
+
+```
+━━━ 🧠 RECEIPT ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  ✅  importUsers.js:4   for...of so each insert is awaited
+  ✅  importUsers.js:12  returns the failed rows, not just a count
+  ⚠️   db.js:22          insertUser takes a client for one transaction
+  ✅  db.js:31           rollback on partial batch failure
+
+  ▓▓▓▓▓▓▓▓▓░░░  3/4 understood — partial on the shared transaction
+  🔒 gate re-locked
+```
+
+Verdict marks: `✅` understood, `⚠️` partial, `❌` gap. Mechanical edits that were listed
+but not quizzed get `·` and a `not quizzed` note, so the receipt never overstates what was
+checked.
+
 - Re-lock the gate for the next change:
 
 ```bash
