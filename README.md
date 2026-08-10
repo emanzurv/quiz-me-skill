@@ -65,23 +65,65 @@ And then, instead of a diff, it hands you this:
 └───────────────────────────────────────────────────────────────┘
 ```
 
-**Lock in an answer before you scroll.** No peeking. This is the entire product and you're
-currently inside the demo.
+**Pick one, then open your answer below.** No cheating — you're inside the demo right now.
 
-<br><br>
+<details>
+<summary><b>I said 1 — insertUser is throwing and the catch swallows it</b></summary>
 
-### 👉 It's 3.
+<br>
 
-Went with 1? Good — that's the trap, and it's a smart wrong answer. Here's how Claude walks
-you off it:
+**Wrong, but it's the smart wrong answer.** Here's the tell: if inserts were throwing,
+`failed` would be *filling up*. The report came back as `imported: 500, failed: 0` — exactly
+`rows.length`. So `failed` was still empty at the moment the function returned.
 
-> If inserts were throwing, `failed` would be **filling up**. But the count came back as
-> *exactly* `rows.length` — so `failed` was still empty when the function returned. The
-> callbacks hadn't even run yet. `forEach` throws the promise on the floor, `importUsers`
-> resolves immediately, and 470 pending inserts die with the process.
+That's not a swallowed error. That's code that never waited.
 
-Miss it and you don't just get corrected — you get asked again, reworded, from a new angle,
-until it actually clicks. Nail all three questions and *now* the code lands.
+</details>
+
+<details>
+<summary><b>I said 2 — the pool is exhausted and late inserts die on exit</b></summary>
+
+<br>
+
+**Wrong, but you're circling it.** Something *does* die on exit — you've got the symptom.
+But an exhausted pool makes callers wait for a free connection, it doesn't make a function
+return early with a fabricated success count.
+
+Ask the sharper question: why did the count get computed *before* any insert had finished?
+
+</details>
+
+<details>
+<summary><b>I said 3 — forEach ignores the returned promise ✅</b></summary>
+
+<br>
+
+**That's it.** `forEach` throws the promise on the floor. It calls the async callback, gets
+a pending promise back, discards it, and moves to the next row — so `importUsers` reaches
+its `return` while all 500 inserts are still in flight.
+
+`failed` is empty because nothing has failed *yet*. The count is a lie told at t=0. Then the
+process exits and ~470 pending inserts die with it.
+
+</details>
+
+<details>
+<summary><b>I said 4 — failed.push races between callbacks</b></summary>
+
+<br>
+
+**Wrong — and this one's a freebie.** JavaScript is single-threaded. Two callbacks can't be
+inside `failed.push` at the same time, so there's no race to lose entries to.
+
+Worth knowing *why* it's not the answer: this bug isn't about concurrency being unsafe, it's
+about concurrency never being awaited.
+
+</details>
+
+<br>
+
+Miss it and you don't just get told the answer — you get asked again, reworded, from a new
+angle, until it genuinely clicks. Nail all three questions and *now* the code lands.
 
 Then comes the receipt:
 
@@ -95,6 +137,26 @@ Then comes the receipt:
 
 Every edit named. Nothing bundled, nothing shrugged off as "minor," and **no credit for the
 one you couldn't explain.** Then it fills that gap in.
+
+## 🔁 The whole loop
+
+```mermaid
+flowchart LR
+    A([you ask for a fix]) --> B[Claude reads<br/>the real code]
+    B --> C{3 questions:<br/>cause · mechanism · blast radius}
+    C -- any wrong --> D[explains why<br/>asks again, new angle]
+    D --> C
+    C -- all correct --> E[[the code lands]]
+    E --> F{can you explain<br/>every edit?}
+    F -- gap --> G[fills it in]
+    F -- all of them --> H([shipped, and you own it])
+
+    style C fill:#f59e0b,stroke:#b45309,color:#000
+    style E fill:#10b981,stroke:#047857,color:#000
+    style H fill:#10b981,stroke:#047857,color:#000
+```
+
+No edit exists anywhere left of that orange diamond. That's the whole design.
 
 ---
 
