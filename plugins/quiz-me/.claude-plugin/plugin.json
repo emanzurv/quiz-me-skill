@@ -1,7 +1,7 @@
 {
   "name": "quiz-me",
   "description": "Gates code changes behind an interactive quiz: Claude investigates, tests your understanding of root cause and fix, and only implements once you pass.",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "author": {
     "name": "Elias Manzur",
     "email": "emanzurv@gmail.com"
