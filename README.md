@@ -235,6 +235,12 @@ Every "✔️ I reviewed this" checkbox is a lie you tell yourself at speed.
 
 ⭐ **Star it** if you'd rather understand your codebase than inherit it.
 
+<br>
+
+[![Ko-fi](https://img.shields.io/badge/Ko--fi-buy_me_a_coffee-ff5e5b?logo=kofi&logoColor=white)](https://ko-fi.com/schwann2402)
+
+Built this instead of shipping code I couldn't explain.
+
 </div>
 
 ## 📄 License
