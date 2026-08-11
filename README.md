@@ -161,7 +161,9 @@ because nobody wants a pop quiz to rename a variable. Arm it for one repo via
 
 - A project file beats the global one — `{ "enforce": false }` pardons any repo.
 - `ttlMinutes` = how long one pass holds the door open. `0` = forever, you optimist.
-- Your repos stay spotless; the pass marker lives over in `~/.claude/quiz-me/`.
+- Your repos stay spotless; the pass marker **and** the misses log both live over in
+  `~/.claude/quiz-me/`, keyed by project path. Nothing quiz-me writes touches your working
+  tree — no stray `.claude/` to gitignore, nothing to accidentally commit.
 
 ## 🧊 The surprise exam
 

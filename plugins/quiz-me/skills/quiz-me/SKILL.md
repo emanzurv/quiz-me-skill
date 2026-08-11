@@ -21,8 +21,15 @@ Read the real code. Find the actual root cause, the specific line or function th
 produces the behavior, and what the fix touches. The quiz must be grounded in
 findings from this codebase, never a generic pop quiz.
 
-If `.claude/quiz-me-misses.md` exists, read it. Concepts the user has missed before
-get priority in this round's questions.
+If a misses log exists for this project, read it. Concepts the user has missed before
+get priority in this round's questions:
+
+```bash
+cat ~/.claude/quiz-me/"${PWD//\//_}".misses.md 2>/dev/null
+```
+
+The log lives under `~/.claude/quiz-me/`, never in the user's repo. Nothing this skill
+writes lands in the working tree.
 
 Do not edit anything yet. Not one line, not "just to try it".
 
@@ -93,8 +100,12 @@ broken, and the user's terminal width is unknown.
 - **Wrong** → state the correct answer and explain *why* the chosen option fails.
   Then re-quiz that same point: reword the original question, and add a follow-up
   that probes the same concept from a different angle. Repeat until correct.
-  Append one line to `.claude/quiz-me-misses.md` (create it if absent):
-  `YYYY-MM-DD — <concept> — <what was missed>`
+  Append one line to the project's misses log (create it if absent):
+
+  ```bash
+  mkdir -p ~/.claude/quiz-me && echo "YYYY-MM-DD — <concept> — <what was missed>" \
+    >> ~/.claude/quiz-me/"${PWD//\//_}".misses.md
+  ```
 
 Close each round with a scorecard — a 12-cell bar, one line per question, then the state
 of play:
@@ -149,8 +160,9 @@ it, I'll learn it later" — honor it. Do not argue, and do not require a reason
 mkdir -p ~/.claude/quiz-me && echo "override: <reason or 'none given'>" > ~/.claude/quiz-me/"${PWD//\//_}".pass
 ```
 
-Then say plainly, once, that the change is shipping unverified, and log it to
-`.claude/quiz-me-misses.md`. Overriding beats the user uninstalling the gate.
+Then say plainly, once, that the change is shipping unverified, and log it to the misses
+log (`~/.claude/quiz-me/"${PWD//\//_}".misses.md`). Overriding beats the user uninstalling
+the gate.
 
 ### 5. Post-implementation comprehension check
 
@@ -166,7 +178,7 @@ After the change, verify the user can explain what shipped:
   Use `AskUserQuestion` again.
 - Give an explicit per-item verdict: **understood** / **partial** / **gap**. Name the
   ones the user got wrong or could not explain, and fill those in. Log gaps to
-  `.claude/quiz-me-misses.md`.
+  `~/.claude/quiz-me/"${PWD//\//_}".misses.md`.
 - Close with the receipt — verdict column, `file:line`, then what the edit does:
 
 ```

@@ -23,8 +23,13 @@ proves recall at peak context; this proves retention.
    grounded line per option, and `preview` showing the code each option points at — same
    line count for every option, real lines only, all-or-none.
 5. Grade each answer out loud: **retained** / **fuzzy** / **lost**. For anything not
-   retained, explain the mechanism and append a line to `.claude/quiz-me-misses.md`:
-   `YYYY-MM-DD — <concept> — <what was missed>`
+   retained, explain the mechanism and append a line to the project's misses log under
+   `~/.claude/quiz-me/` — never inside the repo:
+
+   ```bash
+   mkdir -p ~/.claude/quiz-me && echo "YYYY-MM-DD — <concept> — <what was missed>" \
+     >> ~/.claude/quiz-me/"${PWD//\//_}".misses.md
+   ```
 6. Close with the scorecard:
 
    ```

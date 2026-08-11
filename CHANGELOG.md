@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.3.1
+
+- The misses log no longer lands in the user's repo. It moves from
+  `.claude/quiz-me-misses.md` to `~/.claude/quiz-me/<project-path>.misses.md`, matching
+  where the pass marker already lived. Nothing quiz-me writes touches the working tree.
+- Existing `.claude/quiz-me-misses.md` files are left alone; delete them by hand.
+
 ## 0.3.0
 
 - Quiz questions now fill every field the picker offers: `header` as a progress chip
