@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.3.2
+
+- The post-implementation comprehension check is multiple choice, same as the pre-change
+  rounds. No prose questions, no free-text recall — every answer is a click.
+- Those questions carry no `preview`: the panel would show the lines that just landed,
+  which is the answer. Options ground themselves in `file:line` in the description, and
+  distractors come from the other edits in the batch and from what the code did before.
+- Preview rules are now scoped to the pre-change rounds, so a preview-less post-change
+  round satisfies all-or-none instead of reading as a violation of it.
+
 ## 0.3.1
 
 - The misses log no longer lands in the user's repo. It moves from

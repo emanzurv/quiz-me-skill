@@ -67,11 +67,15 @@ A bare question with four bare options wastes most of the UI. Every question sen
   every description within a few words of the same length.
 - **`preview`** — the code that option blames, as it actually appears in the repo.
 
-#### Previews are the whole trick
+#### Previews are the whole trick — before the change only
 
 `preview` renders a monospace panel beside the option list, so arrowing through answers
 walks the user through the suspect code. Give every option a preview of the lines its
 claim depends on: `file.js:7` plus three or four lines of real code, copied exactly.
+
+These preview rules govern the pre-implementation rounds, where the suspect code is what
+the user is reasoning about. The post-implementation check in step 5 runs with no previews
+at all, which satisfies all-or-none rather than breaking it.
 
 Rules that keep it a quiz instead of a giveaway:
 
@@ -174,8 +178,14 @@ After the change, verify the user can explain what shipped:
   error handling, anything with design content. Mechanical edits — renames, import
   moves, formatting, mirrored boilerplate — get listed but not quizzed. State which
   ones were listed-only, so the gap is visible rather than silent.
-- For each quizzed change, ask the user to explain what it does and why it was needed.
-  Use `AskUserQuestion` again.
+- For each quizzed change, ask **one single-select `AskUserQuestion` multiple choice**
+  covering what the edit does and why it was needed. Never a prose question — no "explain
+  this edit in your own words", no free-text recall. Every answer is a click, same as
+  before the change.
+- **No `preview` on these questions.** The panel would show the lines that just landed,
+  which is the answer. Ground the options in `file:line` references in the `description`
+  instead, and draw distractors from the other edits in this batch and from what the code
+  did before the change.
 - Give an explicit per-item verdict: **understood** / **partial** / **gap**. Name the
   ones the user got wrong or could not explain, and fill those in. Log gaps to
   `~/.claude/quiz-me/"${PWD//\//_}".misses.md`.
