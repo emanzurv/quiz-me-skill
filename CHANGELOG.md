@@ -1,5 +1,42 @@
 # Changelog
 
+## 0.4.0
+
+- New `difficulty` setting — `easy`, `normal` (default), or `hard`, in
+  `.claude/quiz-me.json`, `~/.claude/quiz-me.json`, or `QUIZ_ME_DIFFICULTY`. One dial
+  moves four levers together: questions per round (2/3/5), options per question (3/4/4),
+  distractor tightness (one clearly wrong → all plausible → all near-misses), preview
+  width (5-6 lines → 3-4 → 2), and what a wrong answer costs (re-ask once → re-ask until
+  correct → restart the rung). The slot rule and all-or-none do not scale with it.
+- Config now merges instead of shadowing. `load_config` returned the first file that
+  parsed, so a project `.claude/quiz-me.json` holding only `{"enforce": true}` hid every
+  global key. Global loads first, project keys land on top.
+- The gate's deny message names the active level and its shape, so the model reading it
+  knows the round size before writing question one. It no longer hardcodes "3 questions".
+
+- The correct answer no longer lands in slot 1 every time. "Vary which position holds
+  the correct answer" was advisory, and variation is a property of a batch — each
+  question is authored alone, and the answer is always the option written first because
+  it is the one already known. Placement is now a rule: smallest line number the correct
+  option cites, `mod` the option count, `+ 1`. Deterministic to compute, unguessable to
+  answer. Applied to the pre-change rounds, the post-change check, `/quiz-me:review`,
+  and the gate's deny message.
+- `/quiz-me:review` now quizzes only on your own session work. It reads the session
+  transcripts under `~/.claude/projects/` to find which files this repo's sessions
+  edited, then keeps commits that are yours *and* touch those files. A teammate's
+  commits on the branch no longer show up; neither does hand-typed work that never
+  passed through a session.
+- Empty file set is a hard stop. An empty pathspec leaves git a bare `--`, which it
+  reads as "no path restriction" and answers with your entire history — silently
+  undoing the scoping. No transcripts (a fresh clone) looks the same as no session
+  work, and neither is a reason to widen the scope.
+- Paths reach git through `xargs -0`. zsh does not word-split unquoted expansions, so
+  interpolating the list directly hands git one newline-stuffed pathspec that matches
+  nothing.
+- New review log at `~/.claude/quiz-me/<project-path>.reviewed.md` records every file
+  quizzed, pass or fail. Files never quizzed get picked first, then least recently
+  quizzed. The misses log is unchanged and still tracks only what was not retained.
+
 ## 0.3.2
 
 - The post-implementation comprehension check is multiple choice, same as the pre-change

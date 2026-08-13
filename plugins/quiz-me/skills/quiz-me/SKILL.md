@@ -35,8 +35,9 @@ Do not edit anything yet. Not one line, not "just to try it".
 
 ### 2. Quiz with `AskUserQuestion`
 
-Ask **2-3 questions per round**, delivered through the `AskUserQuestion` tool as
-multiple choice. Not prose questions — the user should be clicking options.
+Ask **the number of questions the difficulty sets** — 3 by default — delivered through
+the `AskUserQuestion` tool as multiple choice. Not prose questions — the user should be
+clicking options. See *Difficulty* below for the full shape of a round.
 
 Pick the ladder that matches the work:
 
@@ -52,7 +53,22 @@ and do not skip the quiz because the bug ladder does not fit.
 Each question: one correct option plus plausible distractors. Draw distractors from
 misconceptions that are genuinely tempting in *this* code — the neighboring function
 that looks responsible, the plausible-but-wrong ordering, the fix that treats the
-symptom. Vary which position holds the correct answer.
+symptom.
+
+#### Place the correct answer by rule, not by feel
+
+The answer is the option you write first, because it is the one you already know. Left
+alone, that lands it in slot 1 on every question and the quiz becomes a reflex. "Vary the
+position" is not enough — variation is a property of a batch, and each question is
+authored alone.
+
+So compute the slot. Take the smallest line number the correct option cites, `mod` the
+number of options, `+ 1`. That is the slot the correct answer goes in; the distractors
+fill the rest in the order you drafted them. Four options and an answer citing
+`gate.py:30` → `30 mod 4 + 1` → slot 3.
+
+Draft the answer first. Place it last. The rule is deterministic for you and unguessable
+for the user, which is the only combination that works.
 
 #### Fill in every field the picker gives you
 
@@ -71,7 +87,8 @@ A bare question with four bare options wastes most of the UI. Every question sen
 
 `preview` renders a monospace panel beside the option list, so arrowing through answers
 walks the user through the suspect code. Give every option a preview of the lines its
-claim depends on: `file.js:7` plus three or four lines of real code, copied exactly.
+claim depends on: `file.js:7` plus real code, copied exactly — three or four lines at
+`normal`, wider or narrower as the difficulty table sets.
 
 These preview rules govern the pre-implementation rounds, where the suspect code is what
 the user is reasoning about. The post-implementation check in step 5 runs with no previews
@@ -103,8 +120,9 @@ broken, and the user's terminal width is unknown.
 - **Correct** → confirm briefly, move on.
 - **Wrong** → state the correct answer and explain *why* the chosen option fails.
   Then re-quiz that same point: reword the original question, and add a follow-up
-  that probes the same concept from a different angle. Repeat until correct.
-  Append one line to the project's misses log (create it if absent):
+  that probes the same concept from a different angle. Repeat as the difficulty sets —
+  once at `easy`, until correct at `normal`, until correct with the rung restarting at
+  `hard`. Append one line to the project's misses log (create it if absent):
 
   ```bash
   mkdir -p ~/.claude/quiz-me && echo "YYYY-MM-DD — <concept> — <what was missed>" \
@@ -174,7 +192,8 @@ After the change, verify the user can explain what shipped:
 
 - List **every distinct change** as `file:line — what it does`. Hide nothing. Do not
   gloss anything as "minor" or bundle edits together.
-- **Quiz the substantive ones, cap at 5 questions.** Control flow, API shape, ordering,
+- **Quiz the substantive ones**, capped at the round size the difficulty sets — 2 at
+  `easy`, 3 at `normal`, 5 at `hard`. Control flow, API shape, ordering,
   error handling, anything with design content. Mechanical edits — renames, import
   moves, formatting, mirrored boilerplate — get listed but not quizzed. State which
   ones were listed-only, so the gap is visible rather than silent.
@@ -185,7 +204,8 @@ After the change, verify the user can explain what shipped:
 - **No `preview` on these questions.** The panel would show the lines that just landed,
   which is the answer. Ground the options in `file:line` references in the `description`
   instead, and draw distractors from the other edits in this batch and from what the code
-  did before the change.
+  did before the change. The slot rule still applies — place the correct answer at
+  `line mod options + 1`, off the `file:line` its description cites.
 - Give an explicit per-item verdict: **understood** / **partial** / **gap**. Name the
   ones the user got wrong or could not explain, and fill those in. Log gaps to
   `~/.claude/quiz-me/"${PWD//\//_}".misses.md`.
@@ -240,10 +260,12 @@ for one project with `.claude/quiz-me.json`, or for every project with
 `~/.claude/quiz-me.json`:
 
 ```json
-{ "enforce": true, "ttlMinutes": 240 }
+{ "enforce": true, "ttlMinutes": 240, "difficulty": "hard" }
 ```
 
-Project config wins over global. `QUIZ_ME_ENFORCE=1` in the environment also arms it.
+Keys merge, global first, project on top — so a project file setting only `enforce` still
+inherits the global `difficulty`. `QUIZ_ME_ENFORCE=1` in the environment also arms it, and
+`QUIZ_ME_DIFFICULTY` overrides the level for one session.
 
 `ttlMinutes` expires the marker so a forgotten pass does not unlock a whole day; `0`
 disables expiry.
@@ -251,6 +273,32 @@ disables expiry.
 Known limit: the hook covers file-editing tools, not shell commands. A `sed -i` still
 goes through. That is deliberate — the marker itself has to be writable, and the gate
 is a commitment device, not a sandbox.
+
+## Difficulty
+
+`difficulty` is `easy`, `normal`, or `hard`; unset or unrecognized reads as `normal`. It
+is one dial that moves four levers together, so a level is a whole shape of round rather
+than a single number:
+
+| | `easy` | `normal` | `hard` |
+|---|---|---|---|
+| **Questions per round** | 2 | 3 | 5 |
+| **Options per question** | 3 | 4 | 4 |
+| **Distractors** | one clearly wrong, the rest plausible | every one plausible | every one a near-miss, differing from the answer by a single mechanism detail |
+| **Previews** | 5-6 lines, enough context to reason from the panel alone | 3-4 lines | 2 lines, too narrow to settle it without reading the file |
+| **Wrong answer** | explain, re-ask once, move on either way | re-ask until correct | re-ask until correct, and the rung restarts — a wrong answer on Q4 sends the round back to Q1 |
+
+Read the level from config before writing the first question. When enforcement is armed,
+the gate's deny message names the level and its shape, so the round is already specified
+by the time an edit is attempted.
+
+Two rules do not scale. The slot rule holds at every level — `easy` does not mean the
+answer sits in slot 1. All-or-none holds too: `easy` gives wider panels, never a panel on
+some options and not others.
+
+`hard` mode makes the gate genuinely expensive. Five questions with near-miss distractors
+and a restarting rung can cost several rounds before an edit lands. That is the point of
+the level, but it is worth choosing deliberately rather than globally.
 
 ## When to skip the quiz
 
@@ -269,8 +317,10 @@ When skipping, just do the work. Do not announce the skip.
 ## Cold review
 
 Passing right after implementing proves recall at peak context, which is the easiest
-moment there is. `/quiz-me:review [n]` re-quizzes the user on the last `n` commits cold —
-no diff shown, no commit message restated — and grades **retained** / **fuzzy** / **lost**.
+moment there is. `/quiz-me:review [n]` re-quizzes the user on their last `n` commits cold
+— no diff shown, no commit message restated — and grades **retained** / **fuzzy** /
+**lost**. Scope is the user's own commits touching files their sessions edited, so a
+teammate's work on the branch never shows up.
 Suggest it when the user has shipped several gated changes and wants to know what stuck.
 
 ## Anti-patterns
@@ -280,7 +330,8 @@ layer or the view layer?" is a design question, not a quiz question. A quiz ques
 has one answer that is correct about the code as it exists.
 
 **Leaking the answer.** Do not let question phrasing, option length, or option order
-identify the correct choice. Avoid "all of the above" and throwaway joke distractors.
+identify the correct choice. Order is the one that slips silently — apply the slot rule
+every time. Avoid "all of the above" and throwaway joke distractors.
 
 **Quizzing before investigating.** A question you cannot grade with certainty is not
 a quiz question.

@@ -156,11 +156,25 @@ because nobody wants a pop quiz to rename a variable. Arm it for one repo via
 `.claude/quiz-me.json`, or for all of them via `~/.claude/quiz-me.json`:
 
 ```json
-{ "enforce": true, "ttlMinutes": 240 }
+{ "enforce": true, "ttlMinutes": 240, "difficulty": "normal" }
 ```
 
-- A project file beats the global one — `{ "enforce": false }` pardons any repo.
+- Keys merge, project over global — `{ "enforce": false }` pardons one repo without
+  discarding the rest of your global settings.
 - `ttlMinutes` = how long one pass holds the door open. `0` = forever, you optimist.
+- `difficulty` = `easy`, `normal`, or `hard`. It sets the whole round at once, not just
+  the count:
+
+  | | `easy` | `normal` | `hard` |
+  |---|---|---|---|
+  | Questions | 2 | 3 | 5 |
+  | Options | 3 | 4 | 4 |
+  | Distractors | one is obviously wrong | all plausible | all near-misses |
+  | Preview width | 5-6 lines | 3-4 lines | 2 lines |
+  | Getting one wrong | asked again, then moved on | asked until you get it | back to question one |
+
+  `QUIZ_ME_DIFFICULTY=hard` overrides it for one session, for when you want to suffer
+  on purpose.
 - Your repos stay spotless; the pass marker **and** the misses log both live over in
   `~/.claude/quiz-me/`, keyed by project path. Nothing quiz-me writes touches your working
   tree — no stray `.claude/` to gitignore, nothing to accidentally commit.
@@ -175,6 +189,11 @@ Passing a quiz thirty seconds after Claude explained everything isn't memory. It
 
 Grabs your last 5 commits and quizzes you **cold**. No diff. No commit message. Just the
 code, staring back.
+
+Only *your* commits, and only ones touching files your sessions actually edited — it
+reads `~/.claude/projects/` to work out which files those are. Someone else's commits on
+the branch are out of scope; you never wrote them, so there is nothing to retain. Files
+you have already been quizzed on go to the back of the queue.
 
 ```
 3/5 retained — lost the retry backoff, fuzzy on the cache key

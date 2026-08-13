@@ -10,7 +10,7 @@
       "name": "quiz-me",
       "source": "./plugins/quiz-me",
       "description": "Gates code changes behind an interactive quiz: Claude investigates, tests your understanding of root cause and fix, and only implements once you pass.",
-      "version": "0.3.2",
+      "version": "0.4.0",
       "category": "learning",
       "tags": ["learning", "comprehension", "quiz", "anti-vibe-coding"]
     }

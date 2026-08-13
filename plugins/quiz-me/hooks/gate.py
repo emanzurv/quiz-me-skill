@@ -23,17 +23,37 @@ UNLOCK_CMD = (
     'mkdir -p ~/.claude/quiz-me && echo pass > ~/.claude/quiz-me/"${PWD//\\//_}".pass'
 )
 
-DENY_REASON = (
-    "🔒 quiz-me · gate closed — 3 questions to unlock.\n"
+DIFFICULTY = {
+    "easy": "2 questions, 3 options each, one clearly wrong distractor per question",
+    "normal": "3 questions, 4 options each, every distractor plausible",
+    "hard": (
+        "5 questions, 4 options each, every distractor a near-miss that differs "
+        "from the answer by one mechanism detail; previews narrowed to 2 lines"
+    ),
+}
+
+DENY_BODY = (
     "The user has not passed the comprehension quiz for this change yet. Do not "
     "edit. Investigate, then quiz with AskUserQuestion (root cause / mechanism / "
-    "blast radius), filling in header, description, and preview on every option. "
+    "blast radius), filling in header, description, and preview on every option, "
+    "and placing the correct answer at slot `line mod options + 1` rather than first. "
     "After a 100% pass, run:\n"
     "  " + UNLOCK_CMD + "\n"
     "then edit. If the user explicitly said to override, write "
     "`override: <their reason>` to that path instead of `pass`, and say plainly "
     "that the change is shipping unverified."
 )
+
+
+def deny_reason(level):
+    return (
+        "🔒 quiz-me · gate closed — "
+        + level
+        + " difficulty: "
+        + DIFFICULTY[level]
+        + ".\n"
+        + DENY_BODY
+    )
 
 
 def allow():
@@ -55,13 +75,22 @@ def deny(reason):
 
 
 def load_config(root):
-    for path in (os.path.join(root, CONFIG), GLOBAL_CONFIG):
+    merged = {}
+    for path in (GLOBAL_CONFIG, os.path.join(root, CONFIG)):
         try:
             with open(path) as f:
-                return json.load(f)
+                loaded = json.load(f)
         except Exception:
             continue
-    return {}
+        if isinstance(loaded, dict):
+            merged.update(loaded)
+    return merged
+
+
+def difficulty(config):
+    level = os.environ.get("QUIZ_ME_DIFFICULTY") or config.get("difficulty")
+    level = str(level or "normal").strip().lower()
+    return level if level in DIFFICULTY else "normal"
 
 
 def marker_paths(root):
@@ -121,7 +150,7 @@ def main():
     if marker_valid(root, config):
         allow()
 
-    deny(DENY_REASON)
+    deny(deny_reason(difficulty(config)))
 
 
 if __name__ == "__main__":
