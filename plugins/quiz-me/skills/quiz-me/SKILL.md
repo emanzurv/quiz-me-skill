@@ -22,18 +22,74 @@ produces the behavior, and what the fix touches. The quiz must be grounded in
 findings from this codebase, never a generic pop quiz.
 
 If a misses log exists for this project, read it. Concepts the user has missed before
-get priority in this round's questions:
+get priority in this round's questions. Pull the streak in the same call — one read
+covers both files that exist, and a missing one just produces no output for its half:
 
 ```bash
-cat ~/.claude/quiz-me/"${PWD//\//_}".misses.md 2>/dev/null
+r=$(git rev-parse --show-toplevel 2>/dev/null || pwd); f=~/.claude/quiz-me/"${r//\//_}"
+cat "$f".misses.md "$f".streak 2>/dev/null
 ```
 
 The log lives under `~/.claude/quiz-me/`, never in the user's repo. Nothing this skill
 writes lands in the working tree.
 
+Derive the key from the repo root, not from `$PWD`. The hook starts from the payload's
+`cwd`, which is where the session started, and then walks up to the repo root that
+contains it, so both sides land on the same filename even when the session began in a
+subdirectory. `gate.py` also resolves symlinks and falls back to a case-insensitive
+match, so the two agree when the paths disagree on case. The repo root is what keeps them
+agreeing in the first place — key off anything else and the marker is written under a
+name the hook never checks, leaving the gate closed with nothing to unlock it but TTL
+expiry. Every snippet below opens with the same `r=`/`f=` pair.
+
+#### Open concepts carry forward
+
+Every line is `YYYY-MM-DD — <concept> — <what was missed>`, except a resolution line,
+which is `YYYY-MM-DD — <concept> — RESOLVED`. A concept is **open** if its most recent
+line (by position in the file) is a miss, not a `RESOLVED`. Group lines by the exact
+`<concept>` text to find the latest one.
+
+Any open concept that the current change touches gets a guaranteed question this round —
+on top of the ladder, not instead of it if the round size allows, and swapped in for the
+least load-bearing ladder question if it doesn't. Reword it: same concept, a different
+angle than the line that was missed, never the identical question repeated. Tighten its
+distractors one notch past whatever the configured difficulty would otherwise give it —
+`easy` gets `normal`-grade plausibility, `normal` and `hard` get near-misses.
+
+A concept with **two or more** open misses in a row — missed, re-asked, missed again,
+never resolved — is a **boss concept**. When one applies this round, open with one boss
+question before the ladder, marked with 🐉 in its header (e.g. `🐉 boss`). A boss question
+always gets `hard`-width previews (2 lines) and near-miss distractors, and a wrong answer
+restarts the whole round from Q1 — regardless of the project's configured difficulty.
+This is the one place a level's shape does not hold; say so plainly when it fires, so it
+reads as a deliberate escalation and not a bug in the difficulty table.
+
+When a question in this round is answered correctly on a concept that had an open miss,
+queue a resolution line for it — same rule as every other write in this skill: note it
+down, do not shell out mid-round. It ships in step 4's unlock call, alongside whatever
+misses step 3 queued:
+
+```
+YYYY-MM-DD — <concept> — RESOLVED
+```
+
+The post-implementation check (step 5) resolves the same way, queued into its own
+batch-end call. Lines from before this convention existed have no `RESOLVED` counterpart
+and read as open — that is correct, not a bug; an old miss nobody ever confirmed fixed
+should still surface.
+
 Do not edit anything yet. Not one line, not "just to try it".
 
 ### 2. Quiz with `AskUserQuestion`
+
+**Brief the user before the first question.** Investigation happened silently in step 1
+— the user has not seen it. Two to four plain sentences, before the round banner: what
+was asked for, which file(s) and function(s) are in play, and what kind of change this
+is (bug fix / feature / refactor). Not the answers — the questions still have to be
+answered — but enough orientation that a preview panel is something the user can reason
+about, not a cold-open trivia question about code they don't know is even involved. A
+quiz with no preceding context is not gradable fairly; the user can only guess at a
+question whose subject they were never told.
 
 Ask **the number of questions the difficulty sets** — 3 by default — delivered through
 the `AskUserQuestion` tool as multiple choice. Not prose questions — the user should be
@@ -76,8 +132,12 @@ A bare question with four bare options wastes most of the UI. Every question sen
 
 - **`header`** — a progress chip, 12 characters max. Use `Q1/3 cause`, `Q2/3 mech`,
   `Q3/3 blast` for bugs; `Q1/3 limit`, `Q2/3 trade`, `Q3/3 break` for features;
-  `Q1/3 invar`, `Q2/3 proof`, `Q3/3 reach` for refactors. The user should always know
-  how many are left.
+  `Q1/3 invar`, `Q2/3 proof`, `Q3/3 reach` for refactors; `🐉 boss` for a boss question
+  (no `Qn/N` — a boss question sits outside the round's count). The user should always
+  know how many are left. Keep new iconography rare and load-bearing: 🐉 and 🔥 (streak)
+  mark states that don't fire every round; do not add a per-category emoji that would
+  repeat on every single question — that's decoration competing with signal, not adding
+  it, and stacks of unfamiliar glyphs are a big part of why this looked cluttered before.
 - **`label`** — the claim itself, 1-5 words. No leading numbers; the picker numbers them.
 - **`description`** — one line of grounded detail that makes the option tempting. Keep
   every description within a few words of the same length.
@@ -106,14 +166,28 @@ Rules that keep it a quiz instead of a giveaway:
 
 #### Chrome
 
-Open each round with a rule line, so the quiz reads as a thing that started and will end:
+Open each round with a rule line, so the quiz reads as a thing that started and will end.
+Read the streak (see *Streak* below) and append it when it is nonzero — it is the one
+piece of state that survives across batches, so it belongs on the banner, not buried in
+the scorecard. Nonzero:
+
+```
+━━━ 🧠 QUIZ ME · round 1 · root cause · 🔥 streak 5 ━━━━━━━━
+```
+
+Zero or unset, drop the segment entirely rather than printing `streak 0`:
 
 ```
 ━━━ 🧠 QUIZ ME · round 1 · root cause ━━━━━━━━━━━━━━━━━━━━
 ```
 
 Use a plain rule, not a full box — a box whose width does not match the terminal looks
-broken, and the user's terminal width is unknown.
+broken, and the user's terminal width is unknown. If a boss question opens the round, say
+so on its own line right after the banner, once, before asking it:
+
+```
+🐉 boss — this concept has come back twice unresolved. Wrong here restarts the round.
+```
 
 ### 3. Grade every answer out loud
 
@@ -122,12 +196,11 @@ broken, and the user's terminal width is unknown.
   Then re-quiz that same point: reword the original question, and add a follow-up
   that probes the same concept from a different angle. Repeat as the difficulty sets —
   once at `easy`, until correct at `normal`, until correct with the rung restarting at
-  `hard`. Append one line to the project's misses log (create it if absent):
-
-  ```bash
-  mkdir -p ~/.claude/quiz-me && echo "YYYY-MM-DD — <concept> — <what was missed>" \
-    >> ~/.claude/quiz-me/"${PWD//\//_}".misses.md
-  ```
+  `hard`. This batch is no longer a clean sweep — see *Streak* — even once the retry
+  lands correctly; the streak only rewards getting it right the first time. Queue a
+  misses-log line (concept and what was missed); do not shell out per wrong answer —
+  every queued line ships in the single unlock call in step 4, once the round actually
+  passes.
 
 Close each round with a scorecard — a 12-cell bar, one line per question, then the state
 of play:
@@ -162,14 +235,27 @@ is a gate that launders Claude's mistakes into the user's head.
 A partial pass does not unlock implementation. Every question in every round must be
 answered correctly before the first edit.
 
-On a full pass, unlock the enforcement gate before editing:
+On a full pass — and out of plan mode, never inside it — unlock the enforcement gate
+before editing, in the same call that flushes whatever misses and resolutions were
+queued in steps 1 and 3 (skip the `>>` clause if nothing was queued — a clean-on-first-try
+round has nothing to flush):
 
 ```bash
-mkdir -p ~/.claude/quiz-me && echo pass > ~/.claude/quiz-me/"${PWD//\//_}".pass
+r=$(git rev-parse --show-toplevel 2>/dev/null || pwd) \
+  && mkdir -p ~/.claude/quiz-me && f=~/.claude/quiz-me/"${r//\//_}" \
+  && { echo "2024-01-01 — concept a — what was missed"; \
+       echo "2024-01-01 — concept b — RESOLVED"; } >> "$f".misses.md \
+  && echo pass > "$f".pass
 ```
 
 The marker lives outside the repo, so nothing lands in the user's working tree. A
 project-local `.claude/quiz-me.pass` also unlocks, for repos that prefer it.
+
+**Write it once per batch, not once per edit.** One passing quiz covers the whole unit of
+work it was about — every file, every edit, however many tool calls that takes. The hook
+reads the marker, it does not consume it, so re-running the unlock between edits is noise.
+If an edit is denied after a pass, the marker is missing or expired; check `ttlMinutes`
+rather than re-arming reflexively.
 
 If the user says "hold", "wait", or "you can't change it yet" and an edit has already
 landed, revert that edit to its exact original text and go back to quizzing.
@@ -179,16 +265,23 @@ for multiple choice. If the user explicitly says to override — "quiz override"
 it, I'll learn it later" — honor it. Do not argue, and do not require a reason.
 
 ```bash
-mkdir -p ~/.claude/quiz-me && echo "override: <reason or 'none given'>" > ~/.claude/quiz-me/"${PWD//\//_}".pass
+r=$(git rev-parse --show-toplevel 2>/dev/null || pwd) \
+  && mkdir -p ~/.claude/quiz-me && f=~/.claude/quiz-me/"${r//\//_}" \
+  && echo "2024-01-01 — override — <reason or 'none given'>" >> "$f".misses.md \
+  && echo "override: <reason or 'none given'>" > "$f".pass \
+  && echo 0 > "$f".streak
 ```
 
-Then say plainly, once, that the change is shipping unverified, and log it to the misses
-log (`~/.claude/quiz-me/"${PWD//\//_}".misses.md`). Overriding beats the user uninstalling
-the gate.
+Then say plainly, once, that the change is shipping unverified. Overriding beats the
+user uninstalling the gate.
 
 ### 5. Post-implementation comprehension check
 
-After the change, verify the user can explain what shipped:
+Run this **once, at the end of the batch** — after every edit the quiz covered has landed,
+not after each one. Mid-batch checks fragment one unit of work into several quizzes, which
+is the thing that makes the gate feel like it fires per change.
+
+Verify the user can explain what shipped:
 
 - List **every distinct change** as `file:line — what it does`. Hide nothing. Do not
   gloss anything as "minor" or bundle edits together.
@@ -207,8 +300,12 @@ After the change, verify the user can explain what shipped:
   did before the change. The slot rule still applies — place the correct answer at
   `line mod options + 1`, off the `file:line` its description cites.
 - Give an explicit per-item verdict: **understood** / **partial** / **gap**. Name the
-  ones the user got wrong or could not explain, and fill those in. Log gaps to
-  `~/.claude/quiz-me/"${PWD//\//_}".misses.md`.
+  ones the user got wrong or could not explain, and fill those in. Queue a misses-log
+  line for each gap and a `RESOLVED` line (see *Open concepts carry forward* in step 1)
+  for any open concept this batch's edits addressed and the user answered correctly here
+  — queue means note it down, do not shell out yet. They land in the single batch-end
+  write below, along with everything else this step needs to persist. A `partial` or
+  `gap` on any item is also a broken streak, same as a wrong answer in step 3.
 - Close with the receipt — verdict column, `file:line`, then what the edit does:
 
 ```
@@ -227,11 +324,37 @@ Verdict marks: `✅` understood, `⚠️` partial, `❌` gap. Mechanical edits t
 but not quizzed get `·` and a `not quizzed` note, so the receipt never overstates what was
 checked.
 
-- Re-lock the gate for the next change:
+- Close the batch with **one** shell call — every queued misses/RESOLVED line, the
+  streak update, and the re-lock together, `&&`-chained. Not one command per line item;
+  one command for the whole close-out, every time, so approving it once covers the
+  batch instead of prompting per line:
 
-```bash
-rm -f ~/.claude/quiz-me/"${PWD//\//_}".pass .claude/quiz-me.pass
-```
+  ```bash
+  r=$(git rev-parse --show-toplevel 2>/dev/null || pwd) \
+    && mkdir -p ~/.claude/quiz-me && f=~/.claude/quiz-me/"${r//\//_}" \
+    && { echo "2024-01-01 — concept a — what was missed"; \
+         echo "2024-01-01 — concept b — RESOLVED"; } >> "$f".misses.md \
+    && cur=$(cat "$f".streak 2>/dev/null || echo 0) \
+    && echo $(( clean_sweep ? cur + 1 : 0 )) > "$f".streak \
+    && rm -f "$f".pass "$r"/.claude/quiz-me.pass
+  ```
+
+  Omit the misses-append clause entirely on a batch with nothing queued — an empty
+  `{ }` block still runs and still counts as a call. `clean_sweep` is `1` only if every
+  question in every pre-implementation round and this check was answered correctly on
+  the first try; an override batch (*Escape hatch*) is never clean, and always writes
+  `0` regardless of what the post-check found, since the pre-quiz that would have earned
+  the streak never ran.
+
+  Every state write this skill makes shares the one prefix, `mkdir -p ~/.claude/quiz-me
+  && ...` under that directory, or `rm -f` on the two pass-marker paths — nothing else.
+  Approving that prefix once (a project or user permission rule) clears every future
+  quiz-me write silently; re-approving the same shape on every call is the friction to
+  avoid, so keep new state inside this one directory and this one command family rather
+  than inventing a new shape per feature.
+
+Re-locking is the last part of that call, never a step between edits. The next quiz
+belongs to the next unit of work.
 
 Never credit understanding the user did not demonstrate.
 
@@ -249,11 +372,24 @@ the skip rule below does not apply to it.
 Do not quiz inside plan mode. Present the plan first, so the questions are about the
 change that is actually happening.
 
+Do not write the pass marker inside plan mode either. Plan mode denies every write and
+every side-effecting shell command, so the unlock command is denied there — and it is not
+due yet: the marker is only read when an edit is attempted, which cannot happen until the
+plan is approved. An edit attempted in plan mode gets the gate's plan-mode denial, which
+says the same. That is not a deadlock, there is nothing for the user to allow, and the
+plan does not belong in a chat message as a workaround — go back to planning. The misses
+log waits the same way: hold the entries until after `ExitPlanMode`.
+
 ## Enforcement
 
 Prose alone does not stop an edit. The plugin ships a `PreToolUse` hook that denies
-`Edit`, `Write`, and `NotebookEdit` until a pass marker exists for the current directory.
-A `SessionStart` hook deletes that marker, so every session starts locked.
+`Edit`, `Write`, `MultiEdit`, and `NotebookEdit` until a pass marker exists for the
+current directory. The hook only reads the marker — one write covers every edit until it
+expires or the batch ends. A `SessionStart` hook deletes it on `startup`, `resume`, and
+`clear`, so every session starts locked. It also matches `compact` and then deliberately
+does nothing, because a context compaction is the middle of a batch, not the start of one
+— matching the event is what makes that skip a decision the hook actually gets to make
+rather than a branch nothing ever reaches.
 
 Enforcement is **off by default** — it would otherwise block one-line typo fixes. Arm it
 for one project with `.claude/quiz-me.json`, or for every project with
@@ -270,9 +406,43 @@ inherits the global `difficulty`. `QUIZ_ME_ENFORCE=1` in the environment also ar
 `ttlMinutes` expires the marker so a forgotten pass does not unlock a whole day; `0`
 disables expiry.
 
-Known limit: the hook covers file-editing tools, not shell commands. A `sed -i` still
-goes through. That is deliberate — the marker itself has to be writable, and the gate
-is a commitment device, not a sandbox.
+Known limits, both deliberate — the marker itself has to be writable, and the gate is a
+commitment device, not a sandbox:
+
+- **Shell commands are not covered.** The hook matches file-editing tools, so a `sed -i`
+  or a heredoc redirect still goes through.
+- **Paths outside the session root are not covered.** `is_outside_root` exempts any
+  target that is not the session's `cwd` or under it, so edits to a sibling checkout or
+  to `~/.claude` are never gated. The check compares against `root + os.sep`, so a
+  sibling whose name merely starts with the root's name (`/repo-old` against `/repo`) is
+  correctly treated as outside rather than swept in by the string prefix. `~/.claude/quiz-me.json`
+  falls under this: the global config stays writable from a locked session. The project
+  config does not — `.claude/quiz-me.json` is inside the root and gated like any other
+  file, so a locked session cannot disarm the gate by flipping `enforce` in the repo.
+
+The test suite in `hooks/test_gate.py` pins both, so neither can quietly widen:
+
+```bash
+python3 -m unittest discover -s plugins/quiz-me/hooks
+```
+
+Run it after any change to `gate.py`. The hook fails open on every error — a broken hook
+allows the edit rather than blocking it, which is the right call for a session but means
+a bug in it is indistinguishable from a passed quiz. Nothing surfaces it except a test.
+
+## Streak
+
+`~/.claude/quiz-me/<project-path>.streak` holds one integer: consecutive batches where
+every question, everywhere in the batch — every pre-implementation round and the
+post-implementation check — was answered correctly on the first try. Any re-ask, any
+`partial` or `gap`, or an override resets it to `0`. It only ever moves at the single
+batch-end write in step 5 (or the unlock write in step 4, for an override) — never
+mid-round, so a round in progress never shows a number that is about to be wrong.
+
+It exists to be seen, not just stored: read it alongside the misses log in step 1, and
+carry it on the round banner (`🔥 streak 5`) whenever it is nonzero. `gate.py` also reads
+it and folds it into the hook's deny message, so a denied edit already shows the number
+before a single question is asked.
 
 ## Difficulty
 
@@ -294,7 +464,9 @@ by the time an edit is attempted.
 
 Two rules do not scale. The slot rule holds at every level — `easy` does not mean the
 answer sits in slot 1. All-or-none holds too: `easy` gives wider panels, never a panel on
-some options and not others.
+some options and not others. A boss question (*Open concepts carry forward*, step 1) is
+the one deliberate exception — it always runs at `hard`'s tightness regardless of the
+configured level, and says so out loud when it fires.
 
 `hard` mode makes the gate genuinely expensive. Five questions with near-miss distractors
 and a restarting rung can cost several rounds before an edit lands. That is the point of
@@ -302,8 +474,9 @@ the level, but it is worth choosing deliberately rather than globally.
 
 ## When to skip the quiz
 
-The test is mechanical, so the gate fires consistently: **if understanding the change
-required reading more than one file, quiz.** Otherwise skip.
+Skip only when the change clears one of the cases below. Touching a single file is
+never by itself one of those cases — it is the fewest files a quizzable change could
+touch, not a reason to skip one.
 
 Always skip:
 
@@ -311,6 +484,12 @@ Always skip:
 - Formatting, renames, one-line typos
 - Mechanical edits with no design content
 - The user already stated the root cause *and* the fix in their own prompt
+
+Everything else gets quizzed — including a change confined to one file, if it required
+a real decision (a boundary condition, an ordering choice, a tradeoff) that a reader
+would have to reconstruct to explain the change back. Needing more than one file to
+understand a change is a strong signal it needs a quiz; it is not reversible into "one
+file means skip."
 
 When skipping, just do the work. Do not announce the skip.
 

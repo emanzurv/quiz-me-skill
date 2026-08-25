@@ -59,8 +59,12 @@ to the branch is not something the user can be expected to have retained.
    in files not quizzed before; the review log sits beside the misses log:
 
    ```bash
-   cat ~/.claude/quiz-me/"${PWD//\//_}".reviewed.md 2>/dev/null
+   f=~/.claude/quiz-me/"${ROOT//\//_}"; cat "$f".reviewed.md 2>/dev/null
    ```
+
+   `ROOT` is the repo root from step 1, not `$PWD` — the hook derives the same filenames
+   from the session's `cwd`, and a shell in a subdirectory would read and write a
+   different project's state.
 
    Never-reviewed files first, then least recently reviewed. Repeating a file is fine
    once the unreviewed ones run out — say which bucket each question came from.
@@ -83,13 +87,13 @@ to the branch is not something the user can be expected to have retained.
 
    ```bash
    mkdir -p ~/.claude/quiz-me && echo "YYYY-MM-DD — <concept> — <what was missed>" \
-     >> ~/.claude/quiz-me/"${PWD//\//_}".misses.md
+     >> ~/.claude/quiz-me/"${ROOT//\//_}".misses.md
    ```
 8. Record every file quizzed, pass or fail, so the next run can rotate past it:
 
    ```bash
    echo "YYYY-MM-DD — <file> — <retained|fuzzy|lost>" \
-     >> ~/.claude/quiz-me/"${PWD//\//_}".reviewed.md
+     >> ~/.claude/quiz-me/"${ROOT//\//_}".reviewed.md
    ```
 9. Close with the scorecard:
 

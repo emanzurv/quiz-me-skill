@@ -113,8 +113,8 @@ the one you couldn't explain** — that one just gets explained *to* you until y
 
 Told to `Run /reload-plugins to activate.`? That's not a suggestion.
 
-**Did it land?** Type `/quiz-me:` — you should see `quiz-me` and `review`. Nothing? Go check
-`/plugin`, someone's fibbing.
+**Did it land?** Type `/quiz-me:` — you should see `quiz-me`, `review`, and `status`.
+Nothing? Go check `/plugin`, someone's fibbing.
 
 It's now on your machine for every project, sitting perfectly still, judging nothing, until
 you pick a level. 👇
@@ -174,7 +174,8 @@ because nobody wants a pop quiz to rename a variable. Arm it for one repo via
   | Getting one wrong | asked again, then moved on | asked until you get it | back to question one |
 
   `QUIZ_ME_DIFFICULTY=hard` overrides it for one session, for when you want to suffer
-  on purpose.
+  on purpose. (The skill's *Difficulty* table is the source of truth if this one ever
+  drifts from it.)
 - Your repos stay spotless; the pass marker **and** the misses log both live over in
   `~/.claude/quiz-me/`, keyed by project path. Nothing quiz-me writes touches your working
   tree — no stray `.claude/` to gitignore, nothing to accidentally commit.
@@ -201,11 +202,38 @@ you have already been quizzed on go to the back of the queue.
 
 Humbling. Extremely the point.
 
+## 🐉 It keeps score, and it holds a grudge
+
+Every wrong answer gets written down — the concept, and what you actually got wrong — to
+`~/.claude/quiz-me/`, keyed by repo. That log is not a diary. It's a queue.
+
+- **Open concepts come back.** Next time a change touches one, it gets a guaranteed
+  question — same concept, different angle, tighter distractors than your level would
+  normally hand you. Answer it right and a `RESOLVED` line closes it out.
+- **Miss the same thing twice and it becomes a 🐉 boss.** Boss questions open the round,
+  always run at `hard` tightness no matter what level you set, and a wrong answer sends
+  you back to question one. Yes, really.
+- **🔥 Streaks** count consecutive batches where you got *everything* right on the first
+  try — every pre-quiz, plus the post-change check. One re-ask, one partial, one override,
+  back to zero. It rides on the round banner and in the hook's own denial message, so a
+  blocked edit tells you what you're defending before a single question appears.
+
+Want the whole picture without triggering anything?
+
+```
+/quiz-me:status
+```
+
+Armed or not, which config file armed it, your level, whether the gate is currently open
+and for how much longer, your streak, and every open concept with the bosses marked.
+Reads only — it never quizzes you and never writes a thing.
+
 ## 😴 It's not a jerk about it
 
 Zero quizzes for lookups, formatting, renames, typos, or anything where you already called
-the bug *and* the fix yourself. The rule is mechanical: **if Claude had to read more than one
-file, you get quizzed.** Otherwise it shuts up and works.
+the bug *and* the fix yourself. Needing more than one file to explain a change is a strong
+tell that it's quizzable — but it doesn't invert: **a one-file change that turned on a real
+decision still gets quizzed.** Otherwise it shuts up and works.
 
 And when it's 2am and prod is a smoking crater, say **"quiz override."** It ships. No
 argument, no justification, no disappointed sigh — just one quiet note that this one went
@@ -231,9 +259,17 @@ No hard feelings. Mostly.
 | It quizzed me on something dumb | *"quiz override."* Onward. |
 | Hard mode isn't blocking anything | Run `python3 --version`. The hook is Python and fails **open** on purpose — no python3, no lock, just vibes. Then check `enforce` is actually `true`. |
 | It edited before quizzing me | Say *"hold — revert that."* File goes back, quiz resumes. Hard mode makes this a non-event. |
+| I passed and it's *still* blocking | Run `/quiz-me:status`. The pass marker is keyed by repo root, so the usual cause is an expired `ttlMinutes`, not a lost one. |
 
 **Requirements:** Claude Code. Plus `python3` on your PATH for hard mode. That's the entire
 list.
+
+Hacking on the hook? It fails open on purpose, which means a bug in it looks exactly like a
+passed quiz — silent. Run the tests:
+
+```
+python3 -m unittest discover -s plugins/quiz-me/hooks
+```
 
 ## 🤔 Why bother
 
