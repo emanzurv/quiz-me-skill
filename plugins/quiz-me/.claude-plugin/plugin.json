@@ -1,13 +1,13 @@
 {
   "name": "quiz-me",
   "description": "Gates code changes behind an interactive quiz: Claude investigates, tests your understanding of root cause and fix, and only implements once you pass.",
-  "version": "0.7.0",
+  "version": "0.7.1",
   "author": {
     "name": "Elias Manzur",
     "email": "emanzurv@gmail.com"
   },
-  "homepage": "https://github.com/schwann2402/quiz-me-skill",
-  "repository": "https://github.com/schwann2402/quiz-me-skill",
+  "homepage": "https://github.com/emanzurv/quiz-me-skill",
+  "repository": "https://github.com/emanzurv/quiz-me-skill",
   "keywords": [
     "learning",
     "code-review",

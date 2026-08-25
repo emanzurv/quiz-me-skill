@@ -107,7 +107,7 @@ the one you couldn't explain** — that one just gets explained *to* you until y
 ## ⚡ Install
 
 ```
-/plugin marketplace add schwann2402/quiz-me-skill
+/plugin marketplace add emanzurv/quiz-me-skill
 /plugin install quiz-me@quiz-me
 ```
 

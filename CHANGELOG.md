@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.7.1
+
+- `homepage` and `repository` in `plugin.json` pointed at `schwann2402/quiz-me-skill`,
+  which now only redirects. Both read `emanzurv/quiz-me-skill`, as does the
+  `/plugin marketplace add` line in the README.
+
 ## 0.7.0
 
 - `hooks/test_gate.py`: 40 tests over the enforcement hook, run with
