@@ -268,9 +268,17 @@ it, I'll learn it later" — honor it. Do not argue, and do not require a reason
 r=$(git rev-parse --show-toplevel 2>/dev/null || pwd) \
   && mkdir -p ~/.claude/quiz-me && f=~/.claude/quiz-me/"${r//\//_}" \
   && echo "2024-01-01 — override — <reason or 'none given'>" >> "$f".misses.md \
-  && echo "override: <reason or 'none given'>" > "$f".pass \
+  && echo "override: $CLAUDE_CODE_SESSION_ID — <reason or 'none given'>" > "$f".pass \
   && echo 0 > "$f".streak
 ```
+
+The session id is not decoration. A pass marker unlocks any session in the project until
+it expires — passing the quiz is knowledge, and knowledge is not scoped to one transcript
+— but an override is a bypass the user granted to *this* session, so it carries the id and
+unlocks nothing else. "Don't quiz me" said here does not disarm the gate in the other
+window, and it does not outlive this conversation. Write the id in, always: an override
+line with a reason where the id belongs matches no session and unlocks nothing, which is
+the safe direction to fail but reads as the gate ignoring an override the user granted.
 
 Then say plainly, once, that the change is shipping unverified. Overriding beats the
 user uninstalling the gate.
@@ -384,7 +392,16 @@ log waits the same way: hold the entries until after `ExitPlanMode`.
 
 Prose alone does not stop an edit. The plugin ships a `PreToolUse` hook that denies
 `Edit`, `Write`, `MultiEdit`, and `NotebookEdit` until a pass marker exists for the
-current directory. The hook only reads the marker — one write covers every edit until it
+current directory.
+
+Its denial routes to this skill — `Skill`, `quiz-me:quiz-me` — rather than restating the
+protocol. That is deliberate. A deny message compact enough to sit in a hook can only
+carry a sketch of a round, and a session that quizzes from the sketch produces something
+that grades like a quiz and looks nothing like one: no briefing, no banner, no difficulty
+ladder, no previews, no scorecard, no receipt. Load the skill; the message names the gate,
+it is not a substitute for what the gate is holding the line for.
+
+The hook only reads the marker — one write covers every edit until it
 expires or the batch ends. A `SessionStart` hook deletes it on `startup`, `resume`, and
 `clear`, so every session starts locked. It also matches `compact` and then deliberately
 does nothing, because a context compaction is the middle of a batch, not the start of one
@@ -405,6 +422,16 @@ inherits the global `difficulty`. `QUIZ_ME_ENFORCE=1` in the environment also ar
 
 `ttlMinutes` expires the marker so a forgotten pass does not unlock a whole day; `0`
 disables expiry.
+
+A marker holding `pass` unlocks any session until it expires. A marker holding
+`override: <session-id> — <reason>` unlocks only the session whose id it names: the hook
+reads the file's first bytes, and matches that id against the payload's `session_id` or
+`$CLAUDE_CODE_SESSION_ID`, accepting either because the marker is written from the shell
+and read from the payload. Everything else — a different session, an override with no id,
+a bare `override:` — falls through to a denial. `ttlMinutes` still applies on top, so an
+override is bounded by the session *and* the clock. Markers written before this scoping
+existed carry no id and are inert, which re-locks any stale bypass still sitting in
+`~/.claude/quiz-me/` rather than honoring it for the rest of its TTL.
 
 Known limits, both deliberate — the marker itself has to be writable, and the gate is a
 commitment device, not a sandbox:

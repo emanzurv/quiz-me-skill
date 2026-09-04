@@ -15,6 +15,7 @@ the misses log, and never quizzes. Everything it needs comes from one shell call
    echo "--- config global"; cat ~/.claude/quiz-me.json 2>/dev/null
    echo "--- config project"; cat "$r"/.claude/quiz-me.json 2>/dev/null
    echo "--- env: enforce=${QUIZ_ME_ENFORCE:-unset} difficulty=${QUIZ_ME_DIFFICULTY:-unset}"
+   echo "--- session: ${CLAUDE_CODE_SESSION_ID:-unset}"
    echo "--- markers"
    for m in "$f".pass "$r"/.claude/quiz-me.pass; do
      [ -f "$m" ] || continue
@@ -31,7 +32,11 @@ the misses log, and never quizzes. Everything it needs comes from one shell call
    `difficulty` is `normal`; unset `ttlMinutes` is `240`; `0` means no expiry.
 3. Decide the gate state from the markers and the TTL — **open** if a marker exists and
    its age is within `ttlMinutes`, **closed** otherwise. A marker whose content starts
-   with `override:` is open but unearned; say so and quote the reason.
+   with `override:` is session-scoped: open only for the session named by the id after
+   the prefix, which the hook matches against `$CLAUDE_CODE_SESSION_ID`. Report it as
+   open but unearned when that id is this session's, and as **closed — override belongs
+   to another session** when it is not (an override with no id is closed for everyone).
+   Quote the reason either way.
 4. Compute open concepts from the misses log by the rule in the skill: group lines by
    their exact `<concept>` text, and a concept is open if its most recent line is a miss
    rather than `RESOLVED`. Two or more open misses in a row makes it a 🐉 boss concept.

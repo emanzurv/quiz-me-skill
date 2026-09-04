@@ -44,22 +44,29 @@ PLAN_DENY = (
     "plan mode \u2014 the marker is not due until the first real edit."
 )
 
-DENY_BODY = (
-    "The user has not passed the comprehension quiz for this change yet. Do not "
-    "edit. Investigate, then quiz with AskUserQuestion (root cause / mechanism / "
-    "blast radius), filling in header, description, and preview on every option, "
-    "and placing the correct answer at slot `line mod options + 1` rather than first. "
-    "After a 100% pass, run:\n"
-    "  " + UNLOCK_CMD + "\n"
-    "then edit. Write that marker ONCE — it stays valid for every edit in this "
-    "batch, so do not re-run it between edits and do not re-lock until the work "
-    "is finished and the post-implementation check has run. If the user "
-    "explicitly said to override, write `override: <their reason>` to that path "
-    "instead of `pass`, and say plainly that the change is shipping unverified."
-)
+def deny_body(session):
+    return (
+        "The user has not passed the comprehension quiz for this change yet. Do not "
+        "edit. Load the quiz-me skill first — the Skill tool, `quiz-me:quiz-me` — and "
+        "run the round it specifies. Its briefing, round banner, difficulty ladder, "
+        "option previews, slot rule, scorecard and post-implementation receipt are the "
+        "protocol; this message names the gate, it does not replace the skill, and a "
+        "quiz improvised from these few lines is the failure mode it exists to prevent. "
+        "After a 100% pass, run:\n"
+        "  " + UNLOCK_CMD + "\n"
+        "then edit. Write that marker ONCE — it stays valid for every edit in this "
+        "batch, so do not re-run it between edits and do not re-lock until the work "
+        "is finished and the post-implementation check has run. If the user explicitly "
+        "said to override, write this line to that path instead of `pass`, so the "
+        "bypass dies with this session instead of unlocking the repo for every other "
+        "one:\n"
+        "  override: " + (session or "<no session id in the hook payload>") + " — "
+        "<their reason>\n"
+        "and say plainly that the change is shipping unverified."
+    )
 
 
-def deny_reason(level, root):
+def deny_reason(level, root, session):
     counts = concept_counts(root)
     open_n = sum(1 for c in counts.values() if c >= 1)
     boss_n = sum(1 for c in counts.values() if c >= 2)
@@ -82,7 +89,7 @@ def deny_reason(level, root):
         + DIFFICULTY[level]
         + suffix
         + ".\n"
-        + DENY_BODY
+        + deny_body(session)
     )
 
 
@@ -251,15 +258,61 @@ def ttl_minutes(config):
         return float(DEFAULT_TTL_MINUTES)
 
 
-def marker_valid(root, config):
+def override_session(path):
+    """Session id an override marker is scoped to, or None if it is not one.
+
+    A pass marker unlocks any session in the project until it expires: passing
+    the quiz is knowledge, and knowledge does not belong to one transcript. An
+    override is the opposite — a bypass the user granted to the session that
+    asked for it — so it carries that session's id and unlocks nothing else.
+    An override with no id (the pre-scoping format, or a reason where the id
+    should be) matches no session and unlocks nothing at all.
+    """
+    try:
+        with open(path, encoding="utf-8") as f:
+            body = f.read(4096).strip()
+    except OSError:
+        return None
+    if not body.lower().startswith("override:"):
+        return None
+    rest = body[len("override:"):].split()
+    return rest[0].strip(":") if rest else ""
+
+
+def session_ids(payload):
+    """Every id that identifies the session making this call.
+
+    The payload id is authoritative, but the override marker is written by a
+    shell command, which has only $CLAUDE_CODE_SESSION_ID to name itself with.
+    Accept either, so a scoped override written from the shell still unlocks
+    the session that asked for it.
+    """
+    candidates = (
+        payload.get("session_id"),
+        payload.get("sessionId"),
+        os.environ.get("CLAUDE_CODE_SESSION_ID"),
+    )
+    ids = []
+    for candidate in candidates:
+        value = str(candidate or "")
+        if value and value not in ids:
+            ids.append(value)
+    return ids
+
+
+def marker_valid(root, config, sessions):
     ttl = ttl_minutes(config)
     for path in marker_paths(root):
         try:
             age_minutes = (time.time() - os.path.getmtime(path)) / 60
         except OSError:
             continue
-        if ttl <= 0 or age_minutes <= ttl:
-            return True
+        if ttl > 0 and age_minutes > ttl:
+            continue
+        scope = override_session(path)
+        if scope is not None and scope not in sessions:
+            continue
+        return True
     return False
 
 
@@ -302,6 +355,7 @@ def main():
 
     root = payload.get("cwd") or os.getcwd()
     config = load_config(root)
+    sessions = session_ids(payload)
 
     if not is_armed(config):
         allow()
@@ -309,12 +363,12 @@ def main():
         allow()
     if is_outside_root(root, payload.get("tool_input") or {}):
         allow()
-    if marker_valid(root, config):
+    if marker_valid(root, config, sessions):
         allow()
     if is_plan_mode(payload):
         deny(PLAN_DENY)
 
-    deny(deny_reason(difficulty(config), root))
+    deny(deny_reason(difficulty(config), root, sessions[0] if sessions else ""))
 
 
 if __name__ == "__main__":

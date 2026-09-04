@@ -53,15 +53,20 @@ class GateCase(unittest.TestCase):
         return path
 
     def run_gate(self, *args, root=None, tool_input=None, mode=None, env=None,
-                 payload=None, raw_stdin=None):
+                 payload=None, raw_stdin=None, session=None):
         root = root or self.root
         body = payload if payload is not None else {
             "cwd": root,
             "tool_name": "Edit",
             "tool_input": tool_input or {"file_path": os.path.join(root, "app.py")},
             "permission_mode": mode or "default",
+            "session_id": session or "",
         }
-        environ = {k: v for k, v in os.environ.items() if not k.startswith("QUIZ_ME_")}
+        environ = {
+            k: v
+            for k, v in os.environ.items()
+            if not k.startswith("QUIZ_ME_") and k != "CLAUDE_CODE_SESSION_ID"
+        }
         environ["HOME"] = self.home
         environ.update(env or {})
         return subprocess.run(
@@ -167,6 +172,80 @@ class TestMarkers(GateCase):
         with open(path, "w") as f:
             f.write("pass")
         self.assertAllowed(self.run_gate())
+
+
+class TestOverrideScope(GateCase):
+    def setUp(self):
+        super().setUp()
+        self.write_config({"enforce": True})
+
+    def test_override_unlocks_the_session_that_asked_for_it(self):
+        self.write_state(".pass", "override: sess-1 — user said no quiz")
+        self.assertAllowed(self.run_gate(session="sess-1"))
+
+    def test_override_does_not_unlock_another_session(self):
+        self.write_state(".pass", "override: sess-1 — user said no quiz")
+        proc = self.run_gate(session="sess-2")
+        self.assertIn("gate closed", self.assertDenied(proc))
+
+    def test_override_without_a_session_id_unlocks_nothing(self):
+        self.write_state(".pass", "override: user said no quiz")
+        proc = self.run_gate(session="sess-1")
+        self.assertIn("gate closed", self.assertDenied(proc))
+
+    def test_bare_override_unlocks_nothing(self):
+        self.write_state(".pass", "override:")
+        self.assertIn("gate closed", self.assertDenied(self.run_gate(session="sess-1")))
+
+    def test_pass_marker_is_not_session_scoped(self):
+        self.write_state(".pass", "pass")
+        self.assertAllowed(self.run_gate(session="sess-2"))
+
+    def test_override_still_expires_with_the_ttl(self):
+        self.write_config({"enforce": True, "ttlMinutes": 30})
+        self.write_state(".pass", "override: sess-1 — ship it", age_minutes=90)
+        proc = self.run_gate(session="sess-1")
+        self.assertIn("gate closed", self.assertDenied(proc))
+
+    def test_project_override_is_scoped_too(self):
+        with open(os.path.join(self.root, ".claude", "quiz-me.pass"), "w") as f:
+            f.write("override: sess-1 — ship it")
+        self.assertAllowed(self.run_gate(session="sess-1"))
+        proc = self.run_gate(session="sess-2")
+        self.assertIn("gate closed", self.assertDenied(proc))
+
+    def test_env_session_id_matches_an_override_written_from_the_shell(self):
+        self.write_state(".pass", "override: sess-env — ship it")
+        proc = self.run_gate(env={"CLAUDE_CODE_SESSION_ID": "sess-env"})
+        self.assertAllowed(proc)
+
+    def test_env_session_id_does_not_match_another_session(self):
+        self.write_state(".pass", "override: sess-1 — ship it")
+        proc = self.run_gate(env={"CLAUDE_CODE_SESSION_ID": "sess-env"})
+        self.assertIn("gate closed", self.assertDenied(proc))
+
+    def test_case_insensitive_override_prefix(self):
+        self.write_state(".pass", "Override: sess-1 — ship it")
+        self.assertAllowed(self.run_gate(session="sess-1"))
+        self.assertIn("gate closed", self.assertDenied(self.run_gate(session="x")))
+
+
+class TestDenyBody(GateCase):
+    def setUp(self):
+        super().setUp()
+        self.write_config({"enforce": True})
+
+    def test_deny_routes_to_the_skill(self):
+        reason = self.assertDenied(self.run_gate())
+        self.assertIn("quiz-me:quiz-me", reason)
+
+    def test_deny_carries_the_session_id_for_the_override_line(self):
+        reason = self.assertDenied(self.run_gate(session="sess-1"))
+        self.assertIn("override: sess-1 —", reason)
+
+    def test_deny_without_a_session_id_says_so(self):
+        reason = self.assertDenied(self.run_gate())
+        self.assertIn("no session id", reason)
 
 
 class TestExemptions(GateCase):

@@ -1,5 +1,26 @@
 # Changelog
 
+## 0.8.0
+
+- The hook's denial now routes to the skill (`Skill`, `quiz-me:quiz-me`) instead of
+  restating a compressed version of the protocol. The old text was self-contained enough
+  to satisfy: a denied session quizzed from those few lines and `SKILL.md` never loaded,
+  so the round arrived with no briefing, no banner, no difficulty ladder, no option
+  previews, no scorecard and no receipt. Nothing was broken in the skill — nothing was
+  reading it.
+- Overrides are scoped to one session. `override: <session-id> — <reason>` unlocks only
+  the session that asked for the bypass; `marker_valid` reads the marker's content and
+  matches the id against the payload's `session_id` or `$CLAUDE_CODE_SESSION_ID`. Before
+  this, the hook only stat'd the file, so "don't quiz me" written once opened the gate for
+  every session in that repo for the full `ttlMinutes` with nothing on screen to say so.
+  A plain `pass` marker is unchanged and still covers any session — passing the quiz is
+  knowledge, a bypass is not.
+- Override markers written before this release carry no session id, match nothing, and
+  are inert. Any stale bypass sitting in `~/.claude/quiz-me/` re-locks on upgrade.
+- `/quiz-me:status` distinguishes an override that belongs to this session from one that
+  belongs to another, and prints the session id it compared against.
+- 13 more hook tests, 53 total.
+
 ## 0.7.1
 
 - `homepage` and `repository` in `plugin.json` pointed at `schwann2402/quiz-me-skill`,
