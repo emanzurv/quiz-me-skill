@@ -45,7 +45,10 @@ expiry. Every snippet below opens with the same `r=`/`f=` pair.
 #### Open concepts carry forward
 
 Every line is `YYYY-MM-DD — <concept> — <what was missed>`, except a resolution line,
-which is `YYYY-MM-DD — <concept> — RESOLVED`. A concept is **open** if its most recent
+which is `YYYY-MM-DD — <concept> — RESOLVED`. `override` is reserved: the escape hatch
+logs under it, and those lines are bookkeeping, not misses. Nothing counts them as an
+open concept — two overrides in a row would otherwise promote a concept the user never
+got wrong to 🐉 boss — so never file a real miss under that name. A concept is **open** if its most recent
 line (by position in the file) is a miss, not a `RESOLVED`. Group lines by the exact
 `<concept>` text to find the latest one.
 
@@ -394,8 +397,13 @@ Prose alone does not stop an edit. The plugin ships a `PreToolUse` hook that den
 `Edit`, `Write`, `MultiEdit`, and `NotebookEdit` until a pass marker exists for the
 current directory.
 
-Its denial routes to this skill — `Skill`, `quiz-me:quiz-me` — rather than restating the
-protocol. That is deliberate. A deny message compact enough to sit in a hook can only
+Its denial is three lines and routes to this skill — `Skill`, `quiz-me:quiz-me` — rather
+than restating the protocol. Both halves of that are deliberate. `permissionDecisionReason`
+is one string with two audiences: the user reads it in the terminal, styled as a blocked
+tool call, and Claude reads it as an instruction. So it opens with the state of the gate
+and how to skip it, in plain language, and spends one line pointing Claude at the skill.
+Shell commands, marker paths and protocol detail belong here, not in a red block the user
+has to scroll past. A deny message compact enough to sit in a hook can only
 carry a sketch of a round, and a session that quizzes from the sketch produces something
 that grades like a quiz and looks nothing like one: no briefing, no banner, no difficulty
 ladder, no previews, no scorecard, no receipt. Load the skill; the message names the gate,

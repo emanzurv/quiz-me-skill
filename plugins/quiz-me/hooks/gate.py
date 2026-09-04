@@ -21,6 +21,8 @@ GLOBAL_DIR = os.path.expanduser(os.path.join("~", ".claude", "quiz-me"))
 GLOBAL_CONFIG = os.path.expanduser(os.path.join("~", ".claude", "quiz-me.json"))
 DEFAULT_TTL_MINUTES = 240
 
+BOOKKEEPING_CONCEPTS = {"override"}
+
 UNLOCK_CMD = (
     'mkdir -p ~/.claude/quiz-me && echo pass > ~/.claude/quiz-me/"${PWD//\\//_}".pass'
 )
@@ -35,38 +37,22 @@ DIFFICULTY = {
 }
 
 PLAN_DENY = (
-    "\U0001F512 quiz-me \u00b7 gate closed \u2014 plan mode.\n"
-    "There is nothing to unlock yet, and nothing you can unlock: plan mode denies "
-    "every write, the pass marker included, so the unlock command will be denied here "
-    "too. That is not a deadlock and there is nothing for the user to allow. Finish "
-    "investigating, write the plan, call ExitPlanMode. After the plan is approved: "
-    "quiz with AskUserQuestion, then write the marker, then edit. Do not quiz inside "
-    "plan mode \u2014 the marker is not due until the first real edit."
+    "\U0001F512 quiz-me \u00b7 gate closed \u2014 plan mode. The quiz comes after you "
+    "approve the plan, not before.\n"
+    "\u2192 Claude: nothing to unlock here \u2014 plan mode denies the marker write too, and "
+    "that is not a deadlock. Finish the plan, call ExitPlanMode, then load the quiz-me "
+    "skill and quiz before the first edit."
 )
 
-def deny_body(session):
-    return (
-        "The user has not passed the comprehension quiz for this change yet. Do not "
-        "edit. Load the quiz-me skill first — the Skill tool, `quiz-me:quiz-me` — and "
-        "run the round it specifies. Its briefing, round banner, difficulty ladder, "
-        "option previews, slot rule, scorecard and post-implementation receipt are the "
-        "protocol; this message names the gate, it does not replace the skill, and a "
-        "quiz improvised from these few lines is the failure mode it exists to prevent. "
-        "After a 100% pass, run:\n"
-        "  " + UNLOCK_CMD + "\n"
-        "then edit. Write that marker ONCE — it stays valid for every edit in this "
-        "batch, so do not re-run it between edits and do not re-lock until the work "
-        "is finished and the post-implementation check has run. If the user explicitly "
-        "said to override, write this line to that path instead of `pass`, so the "
-        "bypass dies with this session instead of unlocking the repo for every other "
-        "one:\n"
-        "  override: " + (session or "<no session id in the hook payload>") + " — "
-        "<their reason>\n"
-        "and say plainly that the change is shipping unverified."
-    )
+DENY_BODY = (
+    "You'll be quizzed on this change before it lands. Say \"quiz override\" to skip it.\n"
+    "→ Claude: do not edit. Load the quiz-me skill (Skill, `quiz-me:quiz-me`) and run the "
+    "round it specifies — it carries the protocol, the unlock marker and the override "
+    "format. Do not improvise a quiz from this message."
+)
 
 
-def deny_reason(level, root, session):
+def deny_reason(level, root):
     counts = concept_counts(root)
     open_n = sum(1 for c in counts.values() if c >= 1)
     boss_n = sum(1 for c in counts.values() if c >= 2)
@@ -89,7 +75,7 @@ def deny_reason(level, root, session):
         + DIFFICULTY[level]
         + suffix
         + ".\n"
-        + deny_body(session)
+        + DENY_BODY
     )
 
 
@@ -196,7 +182,13 @@ def streak_paths(root):
 
 
 def concept_counts(root):
-    """concept -> consecutive open misses since its last RESOLVED line, or 0."""
+    """concept -> consecutive open misses since its last RESOLVED line, or 0.
+
+    Escape-hatch lines share the log's shape but are bookkeeping, not misses:
+    `— override — <reason>` records that a batch shipped unquizzed. Counting
+    them manufactures an `override` concept that goes boss after the second
+    one, so the deny message reports a concept the user never got wrong.
+    """
     lines = None
     for path in misses_paths(root):
         try:
@@ -213,6 +205,8 @@ def concept_counts(root):
         if len(parts) < 3:
             continue
         concept, text = parts[1].strip(), parts[2].strip()
+        if concept.lower() in BOOKKEEPING_CONCEPTS:
+            continue
         counts[concept] = 0 if text == "RESOLVED" else counts.get(concept, 0) + 1
     return counts
 
@@ -368,7 +362,7 @@ def main():
     if is_plan_mode(payload):
         deny(PLAN_DENY)
 
-    deny(deny_reason(difficulty(config), root, sessions[0] if sessions else ""))
+    deny(deny_reason(difficulty(config), root))
 
 
 if __name__ == "__main__":

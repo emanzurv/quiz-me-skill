@@ -239,13 +239,29 @@ class TestDenyBody(GateCase):
         reason = self.assertDenied(self.run_gate())
         self.assertIn("quiz-me:quiz-me", reason)
 
-    def test_deny_carries_the_session_id_for_the_override_line(self):
-        reason = self.assertDenied(self.run_gate(session="sess-1"))
-        self.assertIn("override: sess-1 —", reason)
-
-    def test_deny_without_a_session_id_says_so(self):
+    def test_deny_opens_with_something_a_human_can_read(self):
         reason = self.assertDenied(self.run_gate())
-        self.assertIn("no session id", reason)
+        first = reason.splitlines()[0]
+        self.assertIn("gate closed", first)
+        self.assertNotIn("Claude:", first)
+
+    def test_deny_tells_the_user_how_to_skip(self):
+        self.assertIn("quiz override", self.assertDenied(self.run_gate()))
+
+    def test_deny_carries_no_shell_commands(self):
+        reason = self.assertDenied(self.run_gate())
+        for noise in ("mkdir -p", "echo pass", "override:", "$", "&&"):
+            self.assertNotIn(noise, reason)
+
+    def test_deny_stays_short_enough_to_read(self):
+        reason = self.assertDenied(self.run_gate())
+        self.assertLessEqual(len(reason.splitlines()), 3)
+        self.assertLessEqual(len(reason), 600)
+
+    def test_plan_deny_stays_short_too(self):
+        reason = self.assertDenied(self.run_gate(mode="plan"))
+        self.assertLessEqual(len(reason.splitlines()), 3)
+        self.assertIn("quiz-me", reason)
 
 
 class TestExemptions(GateCase):
@@ -375,6 +391,26 @@ class TestDenyReason(GateCase):
     def test_zero_streak_omitted(self):
         self.write_state(".streak", "0")
         self.assertNotIn("streak", self.assertDenied(self.run_gate()))
+
+    def test_escape_hatch_lines_are_not_concepts(self):
+        self.write_state(
+            ".misses.md",
+            "2026-01-01 — override — user said just do the fixes\n"
+            "2026-01-02 — override — metadata bump, no quiz owed\n",
+        )
+        reason = self.assertDenied(self.run_gate())
+        self.assertNotIn("open concept", reason)
+        self.assertNotIn("boss", reason)
+
+    def test_a_real_concept_named_override_is_still_bookkeeping(self):
+        self.write_state(
+            ".misses.md",
+            "2026-01-01 — Override — shipped unquizzed\n"
+            "2026-01-02 — cache key — scoped by what\n",
+        )
+        reason = self.assertDenied(self.run_gate())
+        self.assertIn("1 open concept", reason)
+        self.assertNotIn("boss", reason)
 
 
 class TestFailOpen(GateCase):

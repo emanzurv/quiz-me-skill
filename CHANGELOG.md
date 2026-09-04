@@ -1,5 +1,21 @@
 # Changelog
 
+## 0.8.1
+
+- The denial is three lines instead of fourteen. `permissionDecisionReason` is one string
+  with two audiences — the terminal renders it to the user as a blocked tool call, and
+  Claude reads it as an instruction — so it now opens with the gate's state and how to
+  skip it, then spends one line pointing Claude at the skill. The unlock command, the
+  override format and the protocol detail are gone from it; the skill carries all three
+  at the point they are used. The plan-mode denial got the same treatment.
+- `concept_counts` no longer counts escape-hatch log lines. `— override — <reason>` shares
+  the log's shape but records a batch that shipped unquizzed, so two of them promoted an
+  `override` concept the user had never got wrong to 🐉 boss and put it in every deny
+  message. `override` is now reserved bookkeeping.
+- README version badge said 0.3.0.
+- 5 more hook tests, 58 total, including one that fails if the denial grows past three
+  lines or starts carrying shell commands again.
+
 ## 0.8.0
 
 - The hook's denial now routes to the skill (`Skill`, `quiz-me:quiz-me`) instead of
