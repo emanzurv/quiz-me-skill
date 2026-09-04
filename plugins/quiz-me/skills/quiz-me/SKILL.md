@@ -137,10 +137,13 @@ A bare question with four bare options wastes most of the UI. Every question sen
   `Q3/3 blast` for bugs; `Q1/3 limit`, `Q2/3 trade`, `Q3/3 break` for features;
   `Q1/3 invar`, `Q2/3 proof`, `Q3/3 reach` for refactors; `🐉 boss` for a boss question
   (no `Qn/N` — a boss question sits outside the round's count). The user should always
-  know how many are left. Keep new iconography rare and load-bearing: 🐉 and 🔥 (streak)
-  mark states that don't fire every round; do not add a per-category emoji that would
-  repeat on every single question — that's decoration competing with signal, not adding
-  it, and stacks of unfamiliar glyphs are a big part of why this looked cluttered before.
+  know how many are left. Keep iconography rare and load-bearing: 🐉 marks a state that
+  doesn't fire every round; do not add a per-category emoji that would repeat on every
+  single question — that's decoration competing with signal, not adding it, and stacks
+  of unfamiliar glyphs are a big part of why this looked cluttered before. Verdicts use
+  three plain colors and nothing else: 🟢 correct/understood, 🔴 wrong/gap, 🟡 partial —
+  never `✅`/`❌`/`⚠️`, whose variation-selector codepoints render double-width in some
+  terminals and break column alignment in a scorecard or receipt.
 - **`label`** — the claim itself, 1-5 words. No leading numbers; the picker numbers them.
 - **`description`** — one line of grounded detail that makes the option tempting. Keep
   every description within a few words of the same length.
@@ -175,18 +178,19 @@ piece of state that survives across batches, so it belongs on the banner, not bu
 the scorecard. Nonzero:
 
 ```
-━━━ 🧠 QUIZ ME · round 1 · root cause · 🔥 streak 5 ━━━━━━━━
+── QUIZ ME · round 1 · root cause · streak 5 ──
 ```
 
 Zero or unset, drop the segment entirely rather than printing `streak 0`:
 
 ```
-━━━ 🧠 QUIZ ME · round 1 · root cause ━━━━━━━━━━━━━━━━━━━━
+── QUIZ ME · round 1 · root cause ──
 ```
 
-Use a plain rule, not a full box — a box whose width does not match the terminal looks
-broken, and the user's terminal width is unknown. If a boss question opens the round, say
-so on its own line right after the banner, once, before asking it:
+Use a short bookend rule, not a full-width box — a rule sized to the terminal is
+guesswork the terminal's actual width breaks, and two dashes on each side reads as
+deliberate framing without pretending to know that width. If a boss question opens the
+round, say so on its own line right after the banner, once, before asking it:
 
 ```
 🐉 boss — this concept has come back twice unresolved. Wrong here restarts the round.
@@ -209,22 +213,22 @@ Close each round with a scorecard — a 12-cell bar, one line per question, then
 of play:
 
 ```
-━━━ 🧠 SCORE ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+── SCORE ──
 
-  ▓▓▓▓▓▓▓▓░░░░  2/3
+  🟩🟩🟩🟩🟩🟩🟩🟩🟥🟥🟥🟥  2/3
 
-  ✅ cause      forEach drops the promise the callback returns
-  ✅ mech       the count is computed before any insert has run
-  ❌ blast      missed that callers now need the failed rows back
+  🟢 cause      forEach drops the promise the callback returns
+  🟢 mech       the count is computed before any insert has run
+  🔴 blast      missed that callers now need the failed rows back
 
   one to go — re-asking the blast radius from a different angle
 ```
 
-Fill cells in proportion to correct answers, `▓` filled and `░` empty. On a clean sweep,
+Fill cells in proportion to correct answers, 🟩 filled and 🟥 empty. On a clean sweep,
 say so and open the gate:
 
 ```
-  ▓▓▓▓▓▓▓▓▓▓▓▓  3/3 — 🔓 gate open, writing the fix
+  🟩🟩🟩🟩🟩🟩🟩🟩🟩🟩🟩🟩  3/3 — 🔓 gate open, writing the fix
 ```
 
 **The answer key can be wrong.** The key comes from Claude's investigation, and that
@@ -320,18 +324,18 @@ Verify the user can explain what shipped:
 - Close with the receipt — verdict column, `file:line`, then what the edit does:
 
 ```
-━━━ 🧠 RECEIPT ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+── RECEIPT ──
 
-  ✅  importUsers.js:4   for...of so each insert is awaited
-  ✅  importUsers.js:12  returns the failed rows, not just a count
-  ⚠️   db.js:22          insertUser takes a client for one transaction
-  ✅  db.js:31           rollback on partial batch failure
+  🟢  importUsers.js:4   for...of so each insert is awaited
+  🟢  importUsers.js:12  returns the failed rows, not just a count
+  🟡  db.js:22           insertUser takes a client for one transaction
+  🟢  db.js:31           rollback on partial batch failure
 
-  ▓▓▓▓▓▓▓▓▓░░░  3/4 understood — partial on the shared transaction
+  🟩🟩🟩🟩🟩🟩🟩🟩🟩🟥🟥🟥  3/4 understood — partial on the shared transaction
   🔒 gate re-locked
 ```
 
-Verdict marks: `✅` understood, `⚠️` partial, `❌` gap. Mechanical edits that were listed
+Verdict marks: `🟢` understood, `🟡` partial, `🔴` gap. Mechanical edits that were listed
 but not quizzed get `·` and a `not quizzed` note, so the receipt never overstates what was
 checked.
 
@@ -475,7 +479,7 @@ batch-end write in step 5 (or the unlock write in step 4, for an override) — n
 mid-round, so a round in progress never shows a number that is about to be wrong.
 
 It exists to be seen, not just stored: read it alongside the misses log in step 1, and
-carry it on the round banner (`🔥 streak 5`) whenever it is nonzero. `gate.py` also reads
+carry it on the round banner (`streak 5`) whenever it is nonzero. `gate.py` also reads
 it and folds it into the hook's deny message, so a denied edit already shows the number
 before a single question is asked.
 

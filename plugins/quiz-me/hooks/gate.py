@@ -60,7 +60,7 @@ def deny_reason(level, root):
 
     extras = []
     if streak:
-        extras.append("🔥 streak " + str(streak))
+        extras.append("streak " + str(streak))
     if open_n:
         note = str(open_n) + " open concept" + ("s" if open_n != 1 else "") + " from past misses"
         if boss_n:

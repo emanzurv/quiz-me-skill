@@ -1,5 +1,18 @@
 # Changelog
 
+## 0.8.2
+
+- Terminal output redesign: the heavy `━━━ 🧠 ...` rule became a short `── ... ──`
+  bookend, and `✅`/`❌`/`⚠️` verdict marks became `🟢`/`🔴`/`🟡` — those specific emoji
+  carry variation-selector codepoints that render double-width in some terminals and
+  broke column alignment in the scorecard and receipt. The proportional bar swapped
+  `▓`/`░` for `🟩`/`🟥` to carry the same green/red signal as the verdict marks. The `🔥`
+  streak marker and `🧠` header icon are gone; `🐉` boss and `🔒`/`🔓` gate icons are
+  unchanged. Applies to `SKILL.md`, `commands/status.md`, `commands/review.md`, and
+  `gate.py`'s deny message.
+- `marketplace.json`'s version had drifted to 0.7.1 while the plugin itself was on
+  0.8.1; synced back up.
+
 ## 0.8.1
 
 - The denial is three lines instead of fourteen. `permissionDecisionReason` is one string

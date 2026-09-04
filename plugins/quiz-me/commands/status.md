@@ -44,13 +44,13 @@ the misses log, and never quizzes. Everything it needs comes from one shell call
    concepts section when everything is resolved:
 
    ```
-   ━━━ 🧠 QUIZ ME · STATUS ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   ── QUIZ ME · STATUS ──
 
      gate        🔒 closed — no marker
      enforce     armed (~/.claude/quiz-me.json)
      difficulty  normal — 3 questions, 4 options, plausible distractors
      ttl         240m
-     streak      🔥 3
+     streak      3
 
      open concepts
        🐉 retry backoff   missed twice, unresolved — restarts the round

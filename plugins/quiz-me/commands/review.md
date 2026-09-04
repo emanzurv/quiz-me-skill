@@ -74,7 +74,7 @@ to the branch is not something the user can be expected to have retained.
    commit message said, and do not show the diff before asking. Open with a rule line:
 
    ```
-   ━━━ 🧠 COLD REVIEW · 5 session commits · 4 questions ━━━━
+   ── COLD REVIEW · 5 session commits · 4 questions ──
    ```
 
    Fill every field: `header` as `Q2/4 cache`-style progress chips, `description` as one
@@ -98,15 +98,15 @@ to the branch is not something the user can be expected to have retained.
 9. Close with the scorecard:
 
    ```
-   ━━━ 🧠 COLD REVIEW ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   ── COLD REVIEW ──
 
-     ▓▓▓▓▓▓▓░░░░░  3/5 retained
+     🟩🟩🟩🟩🟩🟩🟩🟥🟥🟥🟥🟥  3/5 retained
 
-     ✅ retry queue    dead letters after 3 attempts
-     ✅ auth guard     refresh token rotates on every use
-     ⚠️  cache key      knew it was scoped, fuzzy on by what
-     ❌ retry backoff  thought it was linear; it is exponential
-     ✅ pagination     cursor, not offset, so deletes cannot skip rows
+     🟢 retry queue    dead letters after 3 attempts
+     🟢 auth guard     refresh token rotates on every use
+     🟡 cache key      knew it was scoped, fuzzy on by what
+     🔴 retry backoff  thought it was linear; it is exponential
+     🟢 pagination     cursor, not offset, so deletes cannot skip rows
    ```
 
 Never credit retention the user did not demonstrate. This command grades only; it does

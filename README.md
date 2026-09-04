@@ -4,7 +4,7 @@
 
 ### The bouncer for your diff.
 
-![version](https://img.shields.io/badge/version-0.8.1-black)
+![version](https://img.shields.io/badge/version-0.8.2-black)
 ![claude code](https://img.shields.io/badge/Claude%20Code-plugin-orange)
 ![license](https://img.shields.io/badge/license-MIT-blue)
 ![vibe coding](https://img.shields.io/badge/vibe%20coding-denied-red)
