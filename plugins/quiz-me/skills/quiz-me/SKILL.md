@@ -94,6 +94,22 @@ about, not a cold-open trivia question about code they don't know is even involv
 quiz with no preceding context is not gradable fairly; the user can only guess at a
 question whose subject they were never told.
 
+Every other required output in this skill — banner, scorecard, receipt — ships as a
+fenced template below its instruction, and those are the ones that get followed. The
+brief did not have one, and it was the one step that kept getting skipped. Write it in
+the same shape:
+
+```
+Fixing the templateLoading race in CannedFilters: the early return stops a new debounce
+from being scheduled but doesn't cancel one already queued in debouncedFetchRef, so a
+canned-filter count request still fires ~300ms later. Bug fix, touching
+src/features/filters/components/CannedFilters/index.jsx.
+```
+
+Plain text, 2-4 sentences, no code block of your own — the fence above is this
+instruction's template, not part of what you send. Send it before the round banner,
+every time, even when the round is one question.
+
 Ask **the number of questions the difficulty sets** — 3 by default — delivered through
 the `AskUserQuestion` tool as multiple choice. Not prose questions — the user should be
 clicking options. See *Difficulty* below for the full shape of a round.
@@ -522,7 +538,9 @@ Always skip:
 - Pure lookups, reads, and questions
 - Formatting, renames, one-line typos
 - Mechanical edits with no design content
-- The user already stated the root cause *and* the fix in their own prompt
+- The user stated the root cause *and* the fix themselves, in their own reasoning —
+  not root cause or fix quoted from a pasted finding, log, or another tool's report
+  that the user only forwarded into the prompt
 
 Everything else gets quizzed — including a change confined to one file, if it required
 a real decision (a boundary condition, an ordering choice, a tradeoff) that a reader
